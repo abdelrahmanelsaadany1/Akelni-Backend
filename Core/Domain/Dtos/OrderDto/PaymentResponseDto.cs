@@ -4,16 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Domain.Entities
+namespace Domain.Dtos.OrderDto
 {
-    public class Payment:BaseEntity
+    public class PaymentResponseDto
     {
-        
+        public int Id { get; set; } // From BaseEntity
         public string StripePaymentIntentId { get; set; }
         public decimal Amount { get; set; }
         public DateTime PaidAt { get; set; }
         public int OrderId { get; set; }
-        public virtual Order Order { get; set; }
-
     }
 }

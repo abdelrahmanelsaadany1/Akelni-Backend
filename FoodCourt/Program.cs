@@ -95,6 +95,15 @@ namespace FoodCourt
                     });
             });
 
+
+            //order 
+            builder.Services.AddScoped(typeof(IExtendedRepository<>), typeof(OrderRepository<>));
+
+            // OrderService registration (this is missing from your Program.cs)
+            builder.Services.AddScoped<IOrderService, OrderService>();
+
+
+
             var app = builder.Build();
 
             // Initialize database and roles

@@ -12,8 +12,8 @@ namespace Domain.Entities
         public string Name { get; set; }
         public decimal AdditionalPrice { get; set; }
 
-        public virtual ICollection<ItemAddOn> ItemAddOns { get; set; }
-        public virtual ICollection<OrderItemAddOn> OrderItemAddOns { get; set; }
+        public virtual ICollection<ItemAddOn?> ItemAddOns { get; set; }
+        public virtual ICollection<OrderItemAddOn?> OrderItemAddOns { get; set; }
 
     }
 }
