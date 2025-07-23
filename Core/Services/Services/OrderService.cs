@@ -24,7 +24,7 @@ namespace Services.CategoryService // Adjust namespace as needed
         private readonly IExtendedRepository<AddOn> _addOnRepository;
         private readonly IExtendedRepository<Combo> _comboRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        // private readonly IExtendedRepository<Restaurant> _restaurantRepository; // Uncomment if needed
+        private readonly IExtendedRepository<Restaurant> _restaurantRepository; // Uncomment if needed
 
         public OrderService(
             IExtendedRepository<Order> orderRepository,
@@ -34,7 +34,7 @@ namespace Services.CategoryService // Adjust namespace as needed
             IExtendedRepository<Item> itemRepository,
             IExtendedRepository<AddOn> addOnRepository,
             IExtendedRepository<Combo> comboRepository,
-            // IExtendedRepository<Restaurant> restaurantRepository, // Uncomment if needed
+             IExtendedRepository<Restaurant> restaurantRepository, // Uncomment if needed
             IHttpContextAccessor httpContextAccessor)
         {
             _orderRepository = orderRepository;
@@ -44,7 +44,7 @@ namespace Services.CategoryService // Adjust namespace as needed
             _itemRepository = itemRepository;
             _addOnRepository = addOnRepository;
             _comboRepository = comboRepository;
-            // _restaurantRepository = restaurantRepository; // Assign if uncommented
+            _restaurantRepository = restaurantRepository; // Assign if uncommented
             _httpContextAccessor = httpContextAccessor;
         }
 
@@ -52,6 +52,11 @@ namespace Services.CategoryService // Adjust namespace as needed
         {
             try
             {
+                // ✅ Check if restaurant exists
+                var restaurant = await _restaurantRepository.GetByIdAsync(order.RestaurantId);
+                if (restaurant == null)
+                    throw new Exception("Please choose an existing restaurant.");
+
                 order.CreatedAt = DateTime.UtcNow;
                 order.Status = Order.OrderStatus.Pending;
 
@@ -82,32 +87,34 @@ namespace Services.CategoryService // Adjust namespace as needed
 
                     decimal itemTotal = item.Price * itemDto.Quantity;
 
+                    // ✅ Add AddOns
                     foreach (var addOnId in itemDto.AddOnIds ?? new List<int>())
                     {
                         var addOn = await _addOnRepository.GetByIdAsync(addOnId);
-                        if (addOn != null)
+                        if (addOn == null)
+                            throw new Exception($"AddOn with ID {addOnId} not found."); // 🔒 Optional strict
+
+                        await _orderItemAddOnRepository.AddAsync(new OrderItemAddOn
                         {
-                            await _orderItemAddOnRepository.AddAsync(new OrderItemAddOn
-                            {
-                                OrderItemId = orderItem.Id,
-                                AddOnId = addOnId
-                            });
-                            itemTotal += addOn.AdditionalPrice * itemDto.Quantity; // Changed from .Price to .AdditionalPrice
-                        }
+                            OrderItemId = orderItem.Id,
+                            AddOnId = addOnId
+                        });
+                        itemTotal += addOn.AdditionalPrice * itemDto.Quantity;
                     }
 
+                    // ✅ Add Combos
                     foreach (var comboId in itemDto.ComboIds ?? new List<int>())
                     {
                         var combo = await _comboRepository.GetByIdAsync(comboId);
-                        if (combo != null)
+                        if (combo == null)
+                            throw new Exception($"Combo with ID {comboId} not found."); // 🔒 Optional strict
+
+                        await _orderItemComboRepository.AddAsync(new OrderItemCombo
                         {
-                            await _orderItemComboRepository.AddAsync(new OrderItemCombo
-                            {
-                                OrderItemId = orderItem.Id,
-                                ComboId = comboId
-                            });
-                            itemTotal += combo.ComboPrice * itemDto.Quantity; // Changed from .Price to .ComboPrice
-                        }
+                            OrderItemId = orderItem.Id,
+                            ComboId = comboId
+                        });
+                        itemTotal += combo.ComboPrice * itemDto.Quantity;
                     }
 
                     subTotal += itemTotal;
@@ -121,6 +128,7 @@ namespace Services.CategoryService // Adjust namespace as needed
                 throw new Exception($"Error creating order: {ex.Message}", ex);
             }
         }
+
 
         public async Task<IEnumerable<OrderResponseDto>> GetAllOrdersAsync()
         {
