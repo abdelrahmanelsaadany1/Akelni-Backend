@@ -53,6 +53,13 @@ namespace FoodCourt
 
             builder.Services.AddScoped<IResturantService, ResturantService>();
             builder.Services.AddScoped<IOrderService,OrderService>();
+
+
+            //order 
+            builder.Services.AddScoped(typeof(IExtendedRepository<>), typeof(OrderRepository<>));
+
+            // OrderService registration (this is missing from your Program.cs)
+            builder.Services.AddScoped<IOrderService, OrderService>();
             builder.Services.AddHttpContextAccessor();
             // Authentication
             builder.Services.AddAuthentication(opt =>
@@ -96,11 +103,7 @@ namespace FoodCourt
             });
 
 
-            //order 
-            builder.Services.AddScoped(typeof(IExtendedRepository<>), typeof(OrderRepository<>));
-
-            // OrderService registration (this is missing from your Program.cs)
-            builder.Services.AddScoped<IOrderService, OrderService>();
+           
 
 
 

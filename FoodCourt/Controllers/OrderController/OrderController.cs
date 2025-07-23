@@ -89,9 +89,8 @@ namespace Controllers
                 return NotFound(new { message = ex.Message });
             }
         }
-
         [HttpGet("my-orders")]
-      
+        [Authorize(Roles = "Customer")]  // Only customers can access their orders
         public async Task<IActionResult> GetMyOrders()
         {
             try
@@ -108,6 +107,7 @@ namespace Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
 
         [HttpGet("customer/{customerId}")]
         [Authorize(Roles = "Admin")] // Only admins can search by customer ID
