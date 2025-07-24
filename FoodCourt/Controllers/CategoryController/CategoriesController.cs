@@ -1,7 +1,12 @@
-﻿using Domain.Dtos.CategoryDto;
+﻿using AutoMapper;
+using Domain.Contracts;
+using Domain.Dtos.CategoryDto;
 using Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Persistence.Data;
 using Services.Abstractions.ICategoryService;
+using Sieve.Services;
 using System;
 using System.Threading.Tasks;
 
@@ -12,10 +17,20 @@ namespace FoodCourt.Controllers.CategoryController
     public class CategoriesController : ControllerBase
     {
         private readonly ICategoryService _categoryService;
-
-        public CategoriesController(ICategoryService categoryService)
+        private readonly IMapper _mapper;
+        private readonly FoodCourtDbContext _context;
+        private readonly SieveProcessor _sieveProcessor;
+        public CategoriesController(
+            ICategoryService categoryService,
+            IMapper mapper,
+            FoodCourtDbContext context,
+            SieveProcessor sieveProcessor
+            )
         {
             _categoryService = categoryService;
+            _mapper = mapper;
+            _context = context;
+            _sieveProcessor = sieveProcessor;
         }
 
         [HttpPost("Add")]
@@ -34,11 +49,19 @@ namespace FoodCourt.Controllers.CategoryController
             }
         }
 
+        //GET /api/foods?filters=category==Pizza,price>=30&sorts=-rating&page=1&pageSize=10
         [HttpGet("GetAll")]
-        public async Task<IActionResult> GetAllCategories()
+        public async Task<IActionResult> GetAllCategories([FromQuery] CustomSieveModel sieveModel)
         {
-            var categories = await _categoryService.GetAllCategoriesAsync();
-            return Ok(categories);
+            //var categories = await _categoryService.GetAllCategoriesAsync();
+            var categories = _context.Categories.AsQueryable();
+            var result = _sieveProcessor.Apply(sieveModel, categories,applyPagination:true);
+          
+            return Ok(new
+            {
+                categories = await result.ToListAsync(),
+                totalCount = await result.CountAsync()
+            });
         }
 
         [HttpGet("GetById/{id}")]
@@ -61,7 +84,9 @@ namespace FoodCourt.Controllers.CategoryController
             try
             {
                 var category = await _categoryService.GetCategoryByNameAsync(name);
-                return Ok(category);
+                var mappedCategory = _mapper.Map<CategoryCreateDto>(category);
+                return Ok(mappedCategory);
+                
             }
             catch (Exception ex)
             {
