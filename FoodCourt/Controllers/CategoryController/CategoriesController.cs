@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Domain.Contracts;
+using Domain.Contracts.SieveProcessor;
 using Domain.Dtos.CategoryDto;
 using Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -49,7 +50,7 @@ namespace FoodCourt.Controllers.CategoryController
             }
         }
 
-        //GET /api/foods?filters=category==Pizza,price>=30&sorts=-rating&page=1&pageSize=10
+        //GET /api/foods?filters=name==Pizza,price>=30&sorts=-rating&page=1&pageSize=10
         [HttpGet("GetAll")]
         public async Task<IActionResult> GetAllCategories([FromQuery] CustomSieveModel sieveModel)
         {
