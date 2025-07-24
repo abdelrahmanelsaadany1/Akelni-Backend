@@ -35,56 +35,8 @@ namespace FoodCourt.Controllers.Account
             _configuration = configuration;
         }
 
-        //[HttpPost("register")]
-        //public async Task<IActionResult> Register(RegisterDto dto)
-        //{
-        //    var user = new User { Email = dto.Email, UserName = dto.Email, DisplayName = dto.Role };
-
-        //    var result = await _userManager.CreateAsync(user, dto.Password);
-        //    if (!result.Succeeded)
-        //        return BadRequest(result.Errors);
-
-        //    await _userManager.AddToRoleAsync(user, dto.Role);
-        //    var roles = await _userManager.GetRolesAsync(user);
-        //    var token = _jwtService.GenerateToken(user, roles);
-
-        //    return Ok(new { token });
-        //}
-
-        //[HttpPost("register")]
-        //public async Task<IActionResult> Register(RegisterDto dto)
-        //{
-        //    try
-        //    {
-        //        // Add logging
-        //        Console.WriteLine($"Registration attempt for: {dto.Email}");
-
-        //        var user = new User { Email = dto.Email, UserName = dto.Email, DisplayName = dto.Role };
-
-        //        var result = await _userManager.CreateAsync(user, dto.Password);
-        //        if (!result.Succeeded)
-        //        {
-        //            Console.WriteLine($"User creation failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
-        //            return BadRequest(result.Errors);
-        //        }
-
-        //        await _userManager.AddToRoleAsync(user, dto.Role);
-        //        var roles = await _userManager.GetRolesAsync(user);
-        //        var token = _jwtService.GenerateToken(user, roles);
-
-        //        return Ok(new { token });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Console.WriteLine($"Registration error: {ex.Message}");
-        //        return StatusCode(500, new { message = "Internal server error", details = ex.Message });
-        //    }
-        //}
-        [HttpGet("test")]
-        public IActionResult Test()
-        {
-            return Ok(new { message = "AuthController is working!", timestamp = DateTime.UtcNow });
-        }
+    
+      
 
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterDto dto)
@@ -139,105 +91,7 @@ namespace FoodCourt.Controllers.Account
             return Ok(new { token });
         }
 
-        //// General temporary endpoint for testing purposes
-        //[HttpGet("test")]
-        //[Authorize]
-        //public IActionResult Test()
-        //{
-        //    return Ok("AuthController is working!");
-        //}
-
-        //// General temporary endpoint for Admin testing purposes
-        //[HttpGet("testA")]
-        //[Authorize(Roles = "Admin")]
-        //public IActionResult TestA()
-        //{
-        //    return Ok("Admin only is working!");
-        //}
-
-        //// General temporary endpoint for Chef testing purposes
-        //[HttpGet("testChef")]
-        //[Authorize(Roles = "Chef")]
-        //public IActionResult TestCef()
-        //{
-        //    return Ok("Chef only is working!");
-        //}
-
-        //// General temporary endpoint for Customer testing purposes
-        //[HttpGet("testCustomer")]
-        //[Authorize(Roles = "Customer")]
-        //public IActionResult TestCustomer()
-        //{
-        //    return Ok("Customer is working!");
-        //}
-
-        ////[HttpPost("external-login")]
-        //[HttpPost("external/google")]
-        //public async Task<IActionResult> ExternalLogin([FromBody] ExternalAuthDto dto)
-        //{
-        //    if (dto.Provider == "Google")
-        //    {
-        //        var payload = await GoogleJsonWebSignature.ValidateAsync(dto.IdToken);
-        //        var user = await _userManager.FindByEmailAsync(payload.Email) ??
-        //                   new User { Email = payload.Email, UserName = payload.Email };
-
-        //        if (user.Id == null)
-        //        {
-        //            var createResult = await _userManager.CreateAsync(user);
-        //            if (!createResult.Succeeded) return BadRequest(createResult.Errors);
-
-        //            await _userManager.AddToRoleAsync(user, "Customer"); // Default role
-        //        }
-
-        //        var roles = await _userManager.GetRolesAsync(user);
-        //        var token = _jwtService.GenerateToken(user, roles);
-        //        return Ok(new { token });
-        //    }
-
-        //    //// Similar Facebook flow (if needed)
-        //    //else if(dto.Provider == "Facebook")
-        //    //{
-        //    //    var payloadF = await FacebookJsonWebSignature.ValidateAsync(dto.IdToken);
-        //    //    var userF = await _userManager.FindByEmailAsync(payloadF.Email) ??
-        //    //               new User { Email = payloadF.Email, UserName = payloadF.Email };
-
-        //    //    if (userF.Id == null)
-        //    //    {
-        //    //        var createResult = await _userManager.CreateAsync(userF);
-        //    //        if (!createResult.Succeeded) return BadRequest(createResult.Errors);
-        //    //        await _userManager.AddToRoleAsync(userF, "Customer"); // Default role
-        //    //    }
-        //    //    var rolesF = await _userManager.GetRolesAsync(userF);
-        //    //    var tokenF = _jwtService.GenerateToken(userF, rolesF);
-        //    //    return Ok(new { token = tokenF });
-        //    //}
-
-        //    return BadRequest("Unsupported provider");
-        //}
-
-
-        //[HttpPost("google")]
-        //public async Task<IActionResult> GoogleLogin([FromBody] ExternalAuthDto dto)
-        //{
-        //    try
-        //    {
-        //            // Validate the Google JWT token
-        //            var googleClientId = _configuration["Authentication:Google:ClientId"];
-        //            var payload = await GoogleJsonWebSignature.ValidateAsync(dto.IdToken, new GoogleJsonWebSignature.ValidationSettings
-        //            {
-        //                Audience = new[] { googleClientId }
-        //            });
-
-        //            // You can now use payload.Email, payload.Name, etc.
-        //            // Proceed with your user registration/login logic
-
-        //            return Ok(new { message = "Google token validated", email = payload.Email });
-        //    }
-        //    catch (InvalidJwtException ex)
-        //    {
-        //        return Unauthorized(new { message = "Invalid Google token", details = ex.Message });
-        //    }
-        //}
+       
 
 
         [HttpPost("google")]
@@ -307,16 +161,7 @@ namespace FoodCourt.Controllers.Account
             }
         }
 
-        //[HttpPost("forgot-password")]
-        //public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
-        //{
-        //    var user = await _userManager.FindByEmailAsync(dto.Email);
-        //    if (user == null) return Ok();
 
-        //    var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-        //    await _emailService.SendResetLink(user.Email, token);
-        //    return Ok();
-        //}
 
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
