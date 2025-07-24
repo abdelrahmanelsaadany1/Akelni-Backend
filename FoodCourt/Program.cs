@@ -7,9 +7,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Persistence.Data;
+using Persistence.Mappers;
 using Services.Abstractions.ICategoryService;
 using Services.Auth;
 using Services.CategoryService;
+using Sieve.Services;
 
 namespace FoodCourt
 {
@@ -102,8 +104,11 @@ namespace FoodCourt
                     });
             });
 
+            //Sieve Filtering etc...
+            builder.Services.AddScoped<SieveProcessor>();
 
-           
+            //AutoMapper
+            builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 
 
 
@@ -131,7 +136,7 @@ namespace FoodCourt
             app.UseAuthentication();
             app.UseAuthorization();
 
-            app.MapGet("/", () => "✅ FoodCourt API — VERSION 1.7 ✅");
+            app.MapGet("/", () => " FoodCourt API — VERSION 1.7 ");
             app.MapControllers();
 
             app.Run();
