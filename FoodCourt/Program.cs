@@ -95,10 +95,10 @@ namespace FoodCourt
                 opt.AddPolicy(corsPolicyName,
                     policy =>
                     {
-                        policy.WithOrigins("http://localhost:4200", "https://akelny-front.vercel.app");
-                        policy.AllowAnyMethod();
-                        policy.AllowAnyHeader();
-                        policy.AllowCredentials();
+                        policy.WithOrigins("http://localhost:4200", "https://akelny-front.vercel.app")
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials();
                     });
             });
 
@@ -138,6 +138,3 @@ namespace FoodCourt
         }
     }
 }
-
-
-//try again
