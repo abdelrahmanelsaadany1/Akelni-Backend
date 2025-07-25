@@ -9,8 +9,10 @@ using Microsoft.IdentityModel.Tokens;
 using Persistence.Data;
 using Persistence.Mappers;
 using Services.Abstractions.ICategoryService;
+using Services.Abstractions.IServices;
 using Services.Auth;
 using Services.CategoryService;
+using Services.Services;
 using Sieve.Services;
 
 namespace FoodCourt
@@ -46,6 +48,7 @@ namespace FoodCourt
 
             // Add your services
             builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+            builder.Services.AddScoped(typeof(IGenericService<>), typeof(GenericService<>));
             builder.Services.AddScoped<ICategoryService, CategoryService>();
             builder.Services.AddScoped<IDbInitializer, DbInitializer>();
             // JWT

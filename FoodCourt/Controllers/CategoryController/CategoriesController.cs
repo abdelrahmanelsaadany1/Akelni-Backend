@@ -1,15 +1,12 @@
 ﻿using AutoMapper;
-using Domain.Contracts;
 using Domain.Contracts.SieveProcessor;
 using Domain.Dtos.CategoryDto;
 using Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Persistence.Data;
 using Services.Abstractions.ICategoryService;
-using Sieve.Services;
-using System;
-using System.Threading.Tasks;
+using Services.Abstractions.IServices;
+
 
 namespace FoodCourt.Controllers.CategoryController
 {
@@ -19,19 +16,16 @@ namespace FoodCourt.Controllers.CategoryController
     {
         private readonly ICategoryService _categoryService;
         private readonly IMapper _mapper;
-        private readonly FoodCourtDbContext _context;
-        private readonly SieveProcessor _sieveProcessor;
+        private readonly IGenericService<Category> _genericService;
         public CategoriesController(
             ICategoryService categoryService,
-            IMapper mapper,
-            FoodCourtDbContext context,
-            SieveProcessor sieveProcessor
+            IGenericService<Category> genericService,
+            IMapper mapper
             )
         {
             _categoryService = categoryService;
             _mapper = mapper;
-            _context = context;
-            _sieveProcessor = sieveProcessor;
+            _genericService = genericService;
         }
 
         [HttpPost("Add")]
@@ -55,9 +49,9 @@ namespace FoodCourt.Controllers.CategoryController
         public async Task<IActionResult> GetAllCategories([FromQuery] CustomSieveModel sieveModel)
         {
             //var categories = await _categoryService.GetAllCategoriesAsync();
-            var categories = _context.Categories.AsQueryable();
-            var result = _sieveProcessor.Apply(sieveModel, categories,applyPagination:true);
-          
+            //var categories = _context.Categories.AsQueryable();
+            //var result = _sieveProcessor.Apply(sieveModel, categories,applyPagination:true);
+            var result = _genericService.GetAllSieveAsync(sieveModel);
             return Ok(new
             {
                 categories = await result.ToListAsync(),

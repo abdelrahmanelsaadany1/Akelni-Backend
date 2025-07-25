@@ -1,6 +1,8 @@
 ﻿using Domain.Contracts;
 using Domain.Entities;
 using Services.Abstractions.ICategoryService;
+using Services.Abstractions.IServices;
+using Services.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,10 +13,13 @@ namespace Services.CategoryService
     public class CategoryService : ICategoryService
     {
         private readonly IGenericRepository<Category> _categoryRepository;
-
-        public CategoryService(IGenericRepository<Category> categoryRepository)
+    
+        public CategoryService(
+            IGenericRepository<Category> categoryRepository
+            )
         {
             _categoryRepository = categoryRepository;
+           
         }
 
         public async Task AddCategoryAsync(Category category)
