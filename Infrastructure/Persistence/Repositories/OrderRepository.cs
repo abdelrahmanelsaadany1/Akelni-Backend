@@ -19,10 +19,11 @@ public class OrderRepository<TEntity> : IExtendedRepository<TEntity> where TEnti
     public async Task<TEntity> GetByIdAsync(int id) =>
         await _context.Set<TEntity>().FindAsync(id);
 
+    // Revert: Call SaveChanges to get the entity ID immediately
     public async Task AddAsync(TEntity entity)
     {
         await _context.Set<TEntity>().AddAsync(entity);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(); // Keep this to get the ID
     }
 
     public void Update(TEntity entity)
@@ -39,13 +40,11 @@ public class OrderRepository<TEntity> : IExtendedRepository<TEntity> where TEnti
         await _context.SaveChangesAsync();
 
     // Extended methods
-
     public async Task<TEntity> GetByIdAsync(int id, Func<IQueryable<TEntity>, IIncludableQueryable<TEntity, object>> include = null)
     {
         IQueryable<TEntity> query = _context.Set<TEntity>();
         if (include != null)
             query = include(query);
-
         return await query.FirstOrDefaultAsync(e => e.Id == id);
     }
 
@@ -55,16 +54,12 @@ public class OrderRepository<TEntity> : IExtendedRepository<TEntity> where TEnti
         Func<IQueryable<TEntity>, IOrderedQueryable<TEntity>> orderBy = null)
     {
         IQueryable<TEntity> query = _context.Set<TEntity>();
-
         if (filter != null)
             query = query.Where(filter);
-
         if (include != null)
             query = include(query);
-
         if (orderBy != null)
             query = orderBy(query);
-
         return await query.ToListAsync();
     }
 
