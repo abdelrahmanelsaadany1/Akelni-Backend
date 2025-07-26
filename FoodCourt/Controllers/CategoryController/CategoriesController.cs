@@ -123,22 +123,22 @@ namespace FoodCourt.Controllers.CategoryController
             }
         }
 
-        [HttpPost("BulkAdd")]
-        public async Task<IActionResult> BulkAddCategories([FromBody] string[] categoryNames)
-        {
-            try
-            {
-                foreach (var name in categoryNames)
-                {
-                    var category = new Category { Name = name };
-                    await _categoryService.AddCategoryAsync(category);
-                }
-                return Ok($"Successfully added {categoryNames.Length} categories!");
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
-        }
+        //[HttpPost("BulkAdd")]
+        //public async Task<IActionResult> BulkAddCategories([FromBody] string[] categoryNames)
+        //{
+        //    try
+        //    {
+        //        foreach (var name in categoryNames)
+        //        {
+        //            var category = new Category { Name = name };
+        //            await _categoryService.AddCategoryAsync(category);
+        //        }
+        //        return Ok($"Successfully added {categoryNames.Length} categories!");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return BadRequest(ex.Message);
+        //    }
+        //}
     }
 }
