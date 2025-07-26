@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Domain.Dtos.CategoryDto;
+using Domain.Dtos.ItemDto;
 using Domain.Entities;
 
 namespace Persistence.Mappers
@@ -9,6 +10,7 @@ namespace Persistence.Mappers
         public MappingProfile()
         {
             CreateMap<CategoryCreateDto, Category>().ReverseMap();
+            CreateMap<ItemDto, Item>().ReverseMap();
         }
     }
 }

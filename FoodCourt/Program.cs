@@ -1,4 +1,3 @@
-using System.Text;
 using Domain.Contracts;
 using Domain.Entities;
 using Domain.Entities.Identity;
@@ -9,9 +8,12 @@ using Microsoft.IdentityModel.Tokens;
 using Persistence.Data;
 using Persistence.Mappers;
 using Services.Abstractions.ICategoryService;
+using Services.Abstractions.IServices;
 using Services.Auth;
 using Services.CategoryService;
+using Services.Services;
 using Sieve.Services;
+using System.Text;
 
 namespace FoodCourt
 {
@@ -55,6 +57,7 @@ namespace FoodCourt
 
             builder.Services.AddScoped<IResturantService, ResturantService>();
             builder.Services.AddScoped<IOrderService,OrderService>();
+            builder.Services.AddScoped<IItemService, ItemService>();
 
 
             //order 
