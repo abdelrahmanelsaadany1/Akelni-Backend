@@ -24,7 +24,7 @@ namespace Services.CategoryService // Adjust namespace as needed
         private readonly IExtendedRepository<AddOn> _addOnRepository;
         private readonly IExtendedRepository<Combo> _comboRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly IExtendedRepository<Restaurant> _restaurantRepository; // Uncomment if needed
+        private readonly IExtendedRepository<Restaurant> _restaurantRepository;
 
         public OrderService(
             IExtendedRepository<Order> orderRepository,
@@ -34,7 +34,7 @@ namespace Services.CategoryService // Adjust namespace as needed
             IExtendedRepository<Item> itemRepository,
             IExtendedRepository<AddOn> addOnRepository,
             IExtendedRepository<Combo> comboRepository,
-             IExtendedRepository<Restaurant> restaurantRepository, // Uncomment if needed
+            IExtendedRepository<Restaurant> restaurantRepository,
             IHttpContextAccessor httpContextAccessor)
         {
             _orderRepository = orderRepository;
@@ -44,7 +44,7 @@ namespace Services.CategoryService // Adjust namespace as needed
             _itemRepository = itemRepository;
             _addOnRepository = addOnRepository;
             _comboRepository = comboRepository;
-            _restaurantRepository = restaurantRepository; // Assign if uncommented
+            _restaurantRepository = restaurantRepository;
             _httpContextAccessor = httpContextAccessor;
         }
 
@@ -57,19 +57,21 @@ namespace Services.CategoryService // Adjust namespace as needed
                 if (restaurant == null)
                     throw new Exception("Please choose an existing restaurant.");
 
+                // Set up order properties
                 order.CreatedAt = DateTime.UtcNow;
                 order.Status = Order.OrderStatus.Pending;
-
                 var userId = GetCurrentUserId();
                 order.CustomerId = userId;
-
                 order.DeliveryFee = CalculateDeliveryFee(order.DistanceKm);
                 order.PlatformFee = CalculatePlatformFee();
+                order.SubTotal = 0; // Will be calculated and updated later
 
+                // Save order first to get the ID
                 await _orderRepository.AddAsync(order);
 
                 decimal subTotal = 0;
 
+                // Process all order items
                 foreach (var itemDto in orderItems)
                 {
                     var item = await _itemRepository.GetByIdAsync(itemDto.ItemId);
@@ -78,40 +80,41 @@ namespace Services.CategoryService // Adjust namespace as needed
 
                     var orderItem = new OrderItem
                     {
-                        OrderId = order.Id,
+                        OrderId = order.Id, // Now has a valid ID
                         ItemId = itemDto.ItemId,
                         Quantity = itemDto.Quantity
                     };
 
-                    await _orderItemRepository.AddAsync(orderItem); // Save OrderItem to get its Id
+                    // Save order item to get its ID
+                    await _orderItemRepository.AddAsync(orderItem);
 
                     decimal itemTotal = item.Price * itemDto.Quantity;
 
-                    // ✅ Add AddOns
+                    // Process AddOns
                     foreach (var addOnId in itemDto.AddOnIds ?? new List<int>())
                     {
                         var addOn = await _addOnRepository.GetByIdAsync(addOnId);
                         if (addOn == null)
-                            throw new Exception($"AddOn with ID {addOnId} not found."); // 🔒 Optional strict
+                            throw new Exception($"AddOn with ID {addOnId} not found.");
 
                         await _orderItemAddOnRepository.AddAsync(new OrderItemAddOn
                         {
-                            OrderItemId = orderItem.Id,
+                            OrderItemId = orderItem.Id, // Now has a valid ID
                             AddOnId = addOnId
                         });
                         itemTotal += addOn.AdditionalPrice * itemDto.Quantity;
                     }
 
-                    // ✅ Add Combos
+                    // Process Combos
                     foreach (var comboId in itemDto.ComboIds ?? new List<int>())
                     {
                         var combo = await _comboRepository.GetByIdAsync(comboId);
                         if (combo == null)
-                            throw new Exception($"Combo with ID {comboId} not found."); // 🔒 Optional strict
+                            throw new Exception($"Combo with ID {comboId} not found.");
 
                         await _orderItemComboRepository.AddAsync(new OrderItemCombo
                         {
-                            OrderItemId = orderItem.Id,
+                            OrderItemId = orderItem.Id, // Now has a valid ID
                             ComboId = comboId
                         });
                         itemTotal += combo.ComboPrice * itemDto.Quantity;
@@ -120,6 +123,7 @@ namespace Services.CategoryService // Adjust namespace as needed
                     subTotal += itemTotal;
                 }
 
+                // Update the order with calculated subtotal
                 order.SubTotal = subTotal;
                 await _orderRepository.UpdateAsync(order);
             }
@@ -128,7 +132,6 @@ namespace Services.CategoryService // Adjust namespace as needed
                 throw new Exception($"Error creating order: {ex.Message}", ex);
             }
         }
-
 
         public async Task<IEnumerable<OrderResponseDto>> GetAllOrdersAsync()
         {
@@ -267,8 +270,8 @@ namespace Services.CategoryService // Adjust namespace as needed
             foreach (var orderItem in order.Items)
             {
                 total += orderItem.Item.Price * orderItem.Quantity;
-                total += orderItem.AddOns?.Sum(a => a.AddOn.AdditionalPrice * orderItem.Quantity) ?? 0; // Changed to .AdditionalPrice
-                total += orderItem.Combos?.Sum(c => c.Combo.ComboPrice * orderItem.Quantity) ?? 0; // Changed to .ComboPrice
+                total += orderItem.AddOns?.Sum(a => a.AddOn.AdditionalPrice * orderItem.Quantity) ?? 0;
+                total += orderItem.Combos?.Sum(c => c.Combo.ComboPrice * orderItem.Quantity) ?? 0;
             }
             total += order.DeliveryFee + order.PlatformFee;
             return total;
@@ -325,8 +328,8 @@ namespace Services.CategoryService // Adjust namespace as needed
         private OrderItemResponseDto MapToOrderItemResponseDto(OrderItem orderItem)
         {
             var itemTotal = orderItem.Item.Price * orderItem.Quantity;
-            itemTotal += orderItem.AddOns?.Sum(a => a.AddOn.AdditionalPrice * orderItem.Quantity) ?? 0; // Changed to .AdditionalPrice
-            itemTotal += orderItem.Combos?.Sum(c => c.Combo.ComboPrice * orderItem.Quantity) ?? 0; // Changed to .ComboPrice
+            itemTotal += orderItem.AddOns?.Sum(a => a.AddOn.AdditionalPrice * orderItem.Quantity) ?? 0;
+            itemTotal += orderItem.Combos?.Sum(c => c.Combo.ComboPrice * orderItem.Quantity) ?? 0;
 
             return new OrderItemResponseDto
             {
@@ -343,7 +346,7 @@ namespace Services.CategoryService // Adjust namespace as needed
                     OrderItemId = a.OrderItemId,
                     AddOnId = a.AddOnId,
                     AddOnName = a.AddOn?.Name,
-                    AddOnPrice = a.AddOn?.AdditionalPrice ?? 0 // Changed to .AdditionalPrice
+                    AddOnPrice = a.AddOn?.AdditionalPrice ?? 0
                 }).ToList() ?? new List<OrderItemAddOnResponseDto>(),
                 Combos = orderItem.Combos?.Select(c => new OrderItemComboResponseDto
                 {
@@ -351,7 +354,7 @@ namespace Services.CategoryService // Adjust namespace as needed
                     OrderItemId = c.OrderItemId,
                     ComboId = c.ComboId,
                     ComboName = c.Combo?.Name,
-                    ComboPrice = c.Combo?.ComboPrice ?? 0 // Changed to .ComboPrice
+                    ComboPrice = c.Combo?.ComboPrice ?? 0
                 }).ToList() ?? new List<OrderItemComboResponseDto>()
             };
         }
