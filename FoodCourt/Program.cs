@@ -56,7 +56,7 @@ namespace FoodCourt
             builder.Services.AddScoped<EmailService>();
 
             builder.Services.AddScoped<IResturantService, ResturantService>();
-            builder.Services.AddScoped<IOrderService,OrderService>();
+            builder.Services.AddScoped<IOrderService, OrderService>();
             builder.Services.AddScoped<IItemService, ItemService>();
 
 
@@ -145,10 +145,4 @@ namespace FoodCourt
             app.Run();
         }
     }
-<<<<<<< HEAD
 }
-=======
-}
-
-
->>>>>>> main

@@ -21,7 +21,6 @@ namespace FoodCourt.Controllers.Account
         private readonly EmailService _emailService;
         private readonly IConfiguration _configuration;
 
-
         public AuthController(UserManager<User> userManager,
                               SignInManager<User> signInManager,
                               JwtService jwtService,
@@ -35,12 +34,6 @@ namespace FoodCourt.Controllers.Account
             _configuration = configuration;
         }
 
-<<<<<<< HEAD
-=======
-    
-      
-
->>>>>>> main
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterDto dto)
         {
@@ -94,12 +87,6 @@ namespace FoodCourt.Controllers.Account
             return Ok(new { token });
         }
 
-<<<<<<< HEAD
-=======
-       
-
-
->>>>>>> main
         [HttpPost("google")]
         public async Task<IActionResult> GoogleLogin([FromBody] ExternalAuthDto dto)
         {
@@ -167,11 +154,6 @@ namespace FoodCourt.Controllers.Account
             }
         }
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> main
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto dto)
         {
@@ -197,8 +179,5 @@ namespace FoodCourt.Controllers.Account
 
             return Ok();
         }
-
-
     }
-
 }
