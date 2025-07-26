@@ -20,7 +20,7 @@ namespace Services.Auth
             _config = config;
         }
 
-        public string GenerateToken(User user, IList<string> roles)
+        public string GenerateToken(User user, IList<string> roles, bool rememberMe = false)
         {
             var claims = new List<Claim>
         {
@@ -34,11 +34,15 @@ namespace Services.Auth
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+            var expiration = rememberMe
+                ? DateTime.Now.AddDays(20)
+                : DateTime.Now.AddDays(1);
+
             var token = new JwtSecurityToken(
                 issuer: _config["Jwt:Issuer"],
                 audience: _config["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddDays(1),
+                expires: expiration,
                 signingCredentials: creds);
 
             return new JwtSecurityTokenHandler().WriteToken(token);

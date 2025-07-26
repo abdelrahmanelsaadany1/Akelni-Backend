@@ -82,7 +82,11 @@ namespace FoodCourt.Controllers.Account
                 return Unauthorized("Invalid credentials");
 
             var roles = await _userManager.GetRolesAsync(user);
-            var token = _jwtService.GenerateToken(user, roles);
+            // Remember me
+            var rememberMe = !string.IsNullOrEmpty(dto.rememberMe) &&
+                (dto.rememberMe.ToLower() == "true" || dto.rememberMe == "1");
+
+            var token = _jwtService.GenerateToken(user, roles, rememberMe);
 
             return Ok(new { token });
         }
