@@ -11,10 +11,8 @@ namespace Domain.Dtos.ResturantDto
         public string Name { get; set; }
         public string Description { get; set; }
         public string Location { get; set; }
-        public string image {  get; set; }
-        public string OpeningHours { get; set; } // e.g., "Mon-Fri 9:00-22:00"
+        public string image { get; set; }
+        public string OpeningHours { get; set; }
         public bool IsOpen { get; set; }
-        //public double Rating { get; set; }
-        //public string ChefId { get; set; }
     }
 }

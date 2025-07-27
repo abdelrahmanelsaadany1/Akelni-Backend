@@ -16,7 +16,7 @@ namespace FoodCourt.Controllers
         }
 
         [HttpPost("Add")]
-        public async Task<IActionResult> Add([FromBody] ItemDto dto)
+        public async Task<IActionResult> Add([FromBody] ItemClassDto dto)
         {
             try
             {
@@ -51,7 +51,7 @@ namespace FoodCourt.Controllers
         }
 
         [HttpPut("Update/{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] ItemDto dto)
+        public async Task<IActionResult> Update(int id, [FromBody] ItemClassDto dto)
         {
             try
             {

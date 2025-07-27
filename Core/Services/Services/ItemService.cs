@@ -17,29 +17,29 @@ namespace Services.Services
             _mapper = mapper;
         }
 
-        public async Task AddItemAsync(ItemDto dto)
+        public async Task AddItemAsync(ItemClassDto dto)
         {
             var item = _mapper.Map<Item>(dto);
             await _itemRepository.AddAsync(item);
             await _itemRepository.SaveChangesAsync();
         }
 
-        public async Task<IEnumerable<ItemDto>> GetAllItemsAsync()
+        public async Task<IEnumerable<ItemClassDto>> GetAllItemsAsync()
         {
             var items = await _itemRepository.GetAllAsync();
-            return items.Select(i => _mapper.Map<ItemDto>(i));
+            return items.Select(i => _mapper.Map<ItemClassDto>(i));
         }
 
-        public async Task<ItemDto> GetItemByIdAsync(int id)
+        public async Task<ItemClassDto> GetItemByIdAsync(int id)
         {
             var item = await _itemRepository.GetByIdAsync(id);
             if (item == null)
                 throw new Exception("Item not found.");
 
-            return _mapper.Map<ItemDto>(item);
+            return _mapper.Map<ItemClassDto>(item);
         }
 
-        public async Task UpdateItemAsync(int id, ItemDto dto)
+        public async Task UpdateItemAsync(int id, ItemClassDto dto)
         {
             var existingItem = await _itemRepository.GetByIdAsync(id);
             if (existingItem == null)

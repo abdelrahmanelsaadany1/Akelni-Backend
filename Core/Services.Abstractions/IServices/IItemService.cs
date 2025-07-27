@@ -10,10 +10,10 @@ namespace Services.Abstractions.IServices
 {
     public interface IItemService
     {
-        Task AddItemAsync(ItemDto dto);
-        Task<IEnumerable<ItemDto>> GetAllItemsAsync();
-        Task<ItemDto> GetItemByIdAsync(int id);
-        Task UpdateItemAsync(int id, ItemDto dto);
+        Task AddItemAsync(ItemClassDto dto);
+        Task<IEnumerable<ItemClassDto>> GetAllItemsAsync();
+        Task<ItemClassDto> GetItemByIdAsync(int id);
+        Task UpdateItemAsync(int id, ItemClassDto dto);
         Task DeleteItemAsync(int id);
     }
 }

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Domain.Dtos.ItemDto
 {
-    public class ItemDto
+    public class ItemClassDto
     {
   
         public string Name { get; set; }

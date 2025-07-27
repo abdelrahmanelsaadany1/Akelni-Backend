@@ -10,7 +10,7 @@ namespace Persistence.Mappers
         public MappingProfile()
         {
             CreateMap<CategoryCreateDto, Category>().ReverseMap();
-            CreateMap<ItemDto, Item>().ReverseMap();
+            CreateMap<ItemClassDto, Item>().ReverseMap();
         }
     }
 }

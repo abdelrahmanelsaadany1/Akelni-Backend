@@ -7,7 +7,6 @@ using System.Security.Claims;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Chef")] // Ensure only chefs can manage restaurants
 public class RestaurantsController : ControllerBase
 {
     private readonly IResturantService _restaurantService;
@@ -36,14 +35,28 @@ public class RestaurantsController : ControllerBase
             Name = dto.Name,
             Description = dto.Description,
             Location = dto.Location,
-            //Rating = dto.Rating,
-            ChefId = chefId // ✅ Set automatically from claims, not from DTO
+            ImageUrl = dto.image,
+            OpeningHours = dto.OpeningHours,
+            IsOpen = dto.IsOpen,
+            ChefId = chefId
         };
 
         try
         {
             await _restaurantService.AddResturantAsync(restaurant);
-            return Ok(new { message = "Restaurant created successfully", restaurantId = restaurant.Id });
+            var responseDto = new RestaurantResponseDto
+            {
+                Id = restaurant.Id,
+                Name = restaurant.Name,
+                Description = restaurant.Description,
+                Location = restaurant.Location,
+                ImageUrl = restaurant.ImageUrl,
+                Rating = restaurant.Rating,
+                ChefId = restaurant.ChefId,
+                OpeningHours = dto.OpeningHours,
+                IsOpen = dto.IsOpen
+            };
+            return Ok(responseDto);
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -67,13 +80,26 @@ public class RestaurantsController : ControllerBase
         {
             Name = dto.Name,
             Description = dto.Description,
-            Location = dto.Location
+            Location = dto.Location,
+            ImageUrl = dto.image
         };
 
         try
         {
             var restaurant = await _restaurantService.UpdateRestaurantAsync(restaurantId, updatedRestaurant);
-            return Ok(restaurant);
+            var responseDto = new RestaurantResponseDto
+            {
+                Id = restaurant.Id,
+                Name = restaurant.Name,
+                Description = restaurant.Description,
+                Location = restaurant.Location,
+                ImageUrl = restaurant.ImageUrl,
+                Rating = restaurant.Rating,
+                ChefId = restaurant.ChefId,
+                OpeningHours = dto.OpeningHours,
+                IsOpen = dto.IsOpen
+            };
+            return Ok(responseDto);
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -136,7 +162,19 @@ public class RestaurantsController : ControllerBase
             if (restaurant == null)
                 return NotFound(new { message = "No restaurant found for the current chef." });
 
-            return Ok(restaurant);
+            var responseDto = new RestaurantResponseDto
+            {
+                Id = restaurant.Id,
+                Name = restaurant.Name,
+                Description = restaurant.Description,
+                Location = restaurant.Location,
+                ImageUrl = restaurant.ImageUrl,
+                OpeningHours = restaurant.OpeningHours,
+                IsOpen = restaurant.IsOpen,
+                Rating = restaurant.Rating,
+                ChefId = restaurant.ChefId
+            };
+            return Ok(responseDto);
         }
         catch (UnauthorizedAccessException ex)
         {
