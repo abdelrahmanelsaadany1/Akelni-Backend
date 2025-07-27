@@ -35,7 +35,7 @@ public class RestaurantsController : ControllerBase
             Name = dto.Name,
             Description = dto.Description,
             Location = dto.Location,
-            ImageUrl = dto.image,
+            ImageUrl = dto.ImageUrl,
             OpeningHours = dto.OpeningHours,
             IsOpen = dto.IsOpen,
             ChefId = chefId
@@ -81,7 +81,7 @@ public class RestaurantsController : ControllerBase
             Name = dto.Name,
             Description = dto.Description,
             Location = dto.Location,
-            ImageUrl = dto.image
+            ImageUrl = dto.ImageUrl
         };
 
         try
