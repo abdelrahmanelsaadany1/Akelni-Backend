@@ -78,4 +78,10 @@ public class OrderRepository<TEntity> : IExtendedRepository<TEntity> where TEnti
             await _context.SaveChangesAsync();
         }
     }
+
+    public IQueryable<TEntity> GetAllQuerable()
+    {
+        throw new NotImplementedException();
+    }
 }
+
