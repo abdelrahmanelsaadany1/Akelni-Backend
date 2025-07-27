@@ -33,6 +33,13 @@ namespace Services.CategoryService
             _httpContextAccessor = httpContextAccessor;
         }
 
+        public async Task<IEnumerable<Restaurant>> GetAllRestaurantsAsync()
+        {
+            // ✅ Get all restaurants from the repository
+            var restaurants = await _RestaurantRepository.GetAllAsync();
+            return restaurants;
+        }
+
         public async Task AddResturantAsync(Restaurant restaurant)
         {
             if (restaurant == null)

@@ -16,6 +16,16 @@ public class RestaurantsController : ControllerBase
         _restaurantService = restaurantService;
     }
 
+
+    // Authorized Admin, Chef can view all restaurants
+    [HttpGet]
+    [Authorize (Roles = "Admin,Chef")]
+    public async Task<IActionResult> GetAllRestaurants()
+    {
+        var restaurants = await _restaurantService.GetAllRestaurantsAsync();
+        return Ok(restaurants);
+    }
+
     // Authorized Chef can create a restaurant
     [HttpPost]
     [Authorize(Roles = "Chef")]

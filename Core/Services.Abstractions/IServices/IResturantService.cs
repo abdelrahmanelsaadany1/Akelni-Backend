@@ -15,5 +15,6 @@ namespace Services.Abstractions.ICategoryService
         Task<bool> CheckChefHasRestaurantAsync();
         Task<Restaurant> GetRestaurantByIdAsync(int restaurantId);
         Task<Restaurant> GetChefRestaurantAsync();
+        Task<IEnumerable<Restaurant>> GetAllRestaurantsAsync();
     }
 }
