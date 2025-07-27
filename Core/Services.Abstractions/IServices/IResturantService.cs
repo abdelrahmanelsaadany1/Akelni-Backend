@@ -10,5 +10,10 @@ namespace Services.Abstractions.ICategoryService
     public interface IResturantService
     {
         Task AddResturantAsync(Restaurant Restaurant);
+        Task<Restaurant> UpdateRestaurantAsync(int restaurantId, Restaurant updatedRestaurant);
+        Task DeleteRestaurantAsync(int restaurantId);
+        Task<bool> CheckChefHasRestaurantAsync();
+        Task<Restaurant> GetRestaurantByIdAsync(int restaurantId);
+        Task<Restaurant> GetChefRestaurantAsync();
     }
 }

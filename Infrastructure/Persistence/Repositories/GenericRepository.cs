@@ -1,5 +1,6 @@
 ﻿using Domain.Contracts;
 using Domain.Entities;
+using Microsoft.EntityFrameworkCore.Query;
 using Persistence.Data;
 
 public class GenericRepository<TEntity> : IGenericRepository<TEntity>
@@ -28,6 +29,14 @@ public class GenericRepository<TEntity> : IGenericRepository<TEntity>
 
     public void Delete(TEntity entity)
         => _dbSet.Remove(entity);
+
+    public async Task<TEntity> GetByIdAsync(int id, Func<IQueryable<TEntity>, IIncludableQueryable<TEntity, object>> include = null)
+    {
+        IQueryable<TEntity> query = _dbSet;
+        if (include != null)
+            query = include(query);
+        return await query.FirstOrDefaultAsync(e => e.Id == id);
+    }
 
     public async Task<int> SaveChangesAsync()
         => await _context.SaveChangesAsync();

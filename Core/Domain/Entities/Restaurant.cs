@@ -18,6 +18,7 @@ namespace Domain.Entities
         public string ChefId { get; set; }
         //public virtual User Chef { get; set; }
         public virtual ICollection<Item?> Items { get; set; }
+        public virtual ICollection<Review> Reviews { get; set; }
         public virtual ICollection<Order?> Orders { get; set; }
 
     }

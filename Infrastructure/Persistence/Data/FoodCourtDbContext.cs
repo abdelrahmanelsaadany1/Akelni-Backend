@@ -31,7 +31,7 @@ namespace Persistence.Data
         public DbSet<OrderItemAddOn> OrderItemAddOns { get; set; }
         public DbSet<OrderItemCombo> OrderItemCombos { get; set; }
         public DbSet<Payment> Payments { get; set; }
-       
+        public DbSet<Review> Reviews { get; set; }
         public DbSet<DeliveryRate> DeliveryRates { get; set; }
 
         #endregion

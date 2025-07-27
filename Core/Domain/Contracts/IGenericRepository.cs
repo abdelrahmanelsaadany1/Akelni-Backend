@@ -1,8 +1,9 @@
-﻿using Domain.Entities;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
+using Domain.Entities;
+using Microsoft.EntityFrameworkCore.Query;
 
 namespace Domain.Contracts
 {
@@ -10,6 +11,8 @@ namespace Domain.Contracts
     {
         Task<IEnumerable<TEntity>> GetAllAsync();
         Task<TEntity> GetByIdAsync(int id);
+        Task<TEntity> GetByIdAsync(int id, Func<IQueryable<TEntity>, IIncludableQueryable<TEntity, object>> include = null);
+
 
         Task AddAsync(TEntity entity);
         void Update(TEntity entity);
