@@ -7,10 +7,13 @@ using System.Threading.Tasks;
 
 namespace Domain.Entities.Identity
 {
-    public class User:IdentityUser
+    public class User : IdentityUser
     {
-       public string DisplayName {  get; set; }
-        public Address Address { get; set; }
+        public string DisplayName { get; set; }
+        public string? FirstName { get; set; }
+        public string? LastName { get; set; }
+        public string? ImageUrl { get; set; }
+        public virtual ICollection<Address> Addresses { get; set; } = new List<Address>();
 
 
         // For Chefs

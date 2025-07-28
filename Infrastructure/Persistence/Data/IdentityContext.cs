@@ -19,12 +19,12 @@ namespace Persistence.Data
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
-            builder.Entity<User>()
-                .HasOne(u => u.Address)
-                .WithOne(a => a.User)
-                .HasForeignKey<Address>(a => a.UserId);
 
-         
+            builder.Entity<User>()
+                .HasMany(u => u.Addresses)
+                .WithOne(a => a.User)
+                .HasForeignKey(a => a.UserId)
+                .IsRequired();
         }
         #region DbSets
         // public DbSet<User> Users { get; set; }

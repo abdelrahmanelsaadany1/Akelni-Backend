@@ -54,6 +54,8 @@ namespace FoodCourt
             builder.Services.AddScoped<JwtService>();
             // Email Service
             builder.Services.AddScoped<EmailService>();
+            // Location Service
+            builder.Services.AddScoped<LocationService>();
 
             builder.Services.AddScoped<IResturantService, ResturantService>();
             builder.Services.AddScoped<IOrderService, OrderService>();

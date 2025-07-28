@@ -8,6 +8,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Services.Abstractions.IServices;
 using Services.Auth;
 
 namespace FoodCourt.Controllers.Account
@@ -20,6 +22,7 @@ namespace FoodCourt.Controllers.Account
         private readonly SignInManager<User> _signInManager;
         private readonly JwtService _jwtService;
         private readonly EmailService _emailService;
+        //private readonly ILocationService _locationService;
         private readonly IConfiguration _configuration;
         //private readonly FacebookAuthService _facebookAuthService;
 
@@ -27,6 +30,7 @@ namespace FoodCourt.Controllers.Account
                               SignInManager<User> signInManager,
                               JwtService jwtService,
                               EmailService emailService,
+                              //ILocationService locationService,
                               //FacebookAuthService facebookAuthService,
                               IConfiguration configuration)
         {
@@ -36,7 +40,158 @@ namespace FoodCourt.Controllers.Account
             _emailService = emailService;
             //_facebookAuthService = facebookAuthService;
             _configuration = configuration;
+            //_locationService = locationService;
         }
+
+
+        // Endpoints to update/delete user information (Profile) either Admin, Chef , or Customer
+
+        [Authorize(Roles = "Admin, Chef, Customer")]
+        [HttpPut("profile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] ProfileDto prf)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized("User not found");
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return NotFound("User not found");
+
+            user.Email = prf.Email;
+            user.ImageUrl = prf.ImageUrl;
+            user.PhoneNumber = prf.PhoneNumber;
+            user.FirstName = prf.FirstName;
+            user.LastName = prf.LastName;
+
+            user.Addresses.Clear();
+            foreach (var addrDto in prf.Addresses)
+            {
+                user.Addresses.Add(new Address
+                {
+                    Description = addrDto.Description,
+                    Street = addrDto.Street,
+                    City = addrDto.City,
+                    Country = addrDto.Country,
+                    Zone = addrDto.Zone,
+                    UserId = user.Id
+                });
+            }
+
+            // Handle password change if requested
+            if (!string.IsNullOrEmpty(prf.OldPassword) && !string.IsNullOrEmpty(prf.NewPassword))
+            {
+                var result = await _userManager.ChangePasswordAsync(user, prf.OldPassword, prf.NewPassword);
+                if (!result.Succeeded)
+                {
+                    var errors = result.Errors.Select(e => e.Description);
+                    return BadRequest(new { message = "Password change failed", errors });
+                }
+
+            }
+
+            var updateResult = await _userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                var errors = updateResult.Errors.Select(e => e.Description);
+                return BadRequest(new { message = "Update failed", errors });
+            }
+
+
+            return Ok("Profile updated successfully");
+        }
+
+        [Authorize(Roles = "Admin, Chef, Customer")]
+        [HttpGet("profile")]
+        public async Task<IActionResult> GetProfile()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized("User not found");
+
+            var user = await _userManager.Users
+                .Include(u => u.Addresses)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+                return NotFound("User not found");
+
+            var profile = new ProfileDto
+            {
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Email = user.Email,
+                ImageUrl = user.ImageUrl,
+                PhoneNumber = user.PhoneNumber,
+                Addresses = user.Addresses.Select(a => new AddressDto
+                {
+                    Description = a.Description,
+                    Street = a.Street,
+                    City = a.City,
+                    Country = a.Country,
+                    Zone = a.Zone
+                }).ToList()
+            };
+
+            return Ok(profile);
+        }
+
+        //// a) GET /locations/governorates
+        ////→ returns all governorates
+
+        //[HttpGet("locations/governorates")]
+        //public async Task<IActionResult> GetGovernorates()
+        //{
+        //    var governorates = await _locationService.GetAllGovernorates();
+        //    return Ok(governorates);
+        //}
+
+        ////b) GET /locations/cities? governorateId = { id }
+        ////→ returns all cities within a given governorate
+        //[HttpGet("locations/cities")]
+        //public async Task<IActionResult> GetCities([FromQuery] int governorateId)
+        //{
+        //    if (governorateId <= 0)
+        //        return BadRequest("Invalid governorate ID");
+        //    var cities = await _locationService.GetCitiesByGovernorate(governorateId);
+        //    return Ok(cities);
+        //}
+
+        ////c) GET /locations/zones? cityId = { id }
+        ////→ returns all zones or qisms within the selected city
+        //[HttpGet("locations/zones")]
+        //public async Task<IActionResult> GetZones([FromQuery] int cityId)
+        //{
+        //    if (cityId <= 0)
+        //        return BadRequest("Invalid city ID");
+        //    var zones = await _locationService.GetZonesByCity(cityId);
+        //    return Ok(zones);
+        //}
+
+        //[HttpGet("locations/governorates")]
+        //public async Task<IActionResult> GetGovernorates() => Ok(await _locationService.GetAllGovernoratesAsync());
+
+        //[HttpGet("locations/cities")]
+        //public async Task<IActionResult> GetCities(int governorateId) => Ok(await _locationService.GetCitiesByGovernorateAsync(governorateId));
+
+        //[HttpGet("locations/zones")]
+        //public async Task<IActionResult> GetZones(int cityId) => Ok(await _locationService.GetZonesByCityAsync(cityId));
+
+        //../d./a.d.a/.d/a./d.a/d./a.d/a.d/a.
+        //[HttpGet("locations/governorates")]
+        //public async Task<IActionResult> GetGovernorates() =>
+        //    Ok(await _locationService.GetAllGovernoratesAsync());
+
+        //[HttpGet("locations/cities")]
+        //public async Task<IActionResult> GetCities(int governorateId) =>
+        //    Ok(await _locationService.GetCitiesByGovernorateAsync(governorateId));
+
+        //[HttpGet("locations/zones")]
+        //public async Task<IActionResult> GetZones(int cityId) =>
+        //    Ok(await _locationService.GetZonesByCityAsync(cityId));
 
 
 
