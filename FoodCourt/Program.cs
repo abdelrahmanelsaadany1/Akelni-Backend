@@ -97,22 +97,22 @@ namespace FoodCourt
                 {
                     options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "";
                     options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
-                })
-                .AddFacebook(options =>
-                {
-
-                    options.ClientId = builder.Configuration["Authentication:Facebook:AppId"] ?? "";
-                    options.ClientSecret = builder.Configuration["Authentication:Facebook:AppSecret"] ?? "";
-                    options.Fields.Add("name");
                 });
                 //.AddFacebook(options =>
                 //{
-                //    options.AppId = builder.Configuration["Authentication:Facebook:AppId"] ?? "";
-                //    options.AppSecret = builder.Configuration["Authentication:Facebook:AppSecret"] ?? "";
-                //    options.Scope.Add("email");
-                //    options.Fields.Add("email");
+
+                //    options.ClientId = builder.Configuration["Authentication:Facebook:AppId"] ?? "";
+                //    options.ClientSecret = builder.Configuration["Authentication:Facebook:AppSecret"] ?? "";
+                //    options.Fields.Add("name");
                 //});
-                // Allow CORS --2
+            //.AddFacebook(options =>
+            //{
+            //    options.AppId = builder.Configuration["Authentication:Facebook:AppId"] ?? "";
+            //    options.AppSecret = builder.Configuration["Authentication:Facebook:AppSecret"] ?? "";
+            //    options.Scope.Add("email");
+            //    options.Fields.Add("email");
+            //});
+            // Allow CORS --2
             builder.Services.AddCors(opt =>
             {
                 opt.AddPolicy(corsPolicyName,
