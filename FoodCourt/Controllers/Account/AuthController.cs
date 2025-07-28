@@ -21,20 +21,20 @@ namespace FoodCourt.Controllers.Account
         private readonly JwtService _jwtService;
         private readonly EmailService _emailService;
         private readonly IConfiguration _configuration;
-        private readonly FacebookAuthService _facebookAuthService;
+        //private readonly FacebookAuthService _facebookAuthService;
 
         public AuthController(UserManager<User> userManager,
                               SignInManager<User> signInManager,
                               JwtService jwtService,
                               EmailService emailService,
-                              FacebookAuthService facebookAuthService,
+                              //FacebookAuthService facebookAuthService,
                               IConfiguration configuration)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _jwtService = jwtService;
             _emailService = emailService;
-            _facebookAuthService = facebookAuthService;
+            //_facebookAuthService = facebookAuthService;
             _configuration = configuration;
         }
 
