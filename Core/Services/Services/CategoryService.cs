@@ -75,5 +75,27 @@ namespace Services.CategoryService
             _categoryRepository.Delete(category);
             await _categoryRepository.SaveChangesAsync();
         }
+
+        //public async Task<bool> DeleteAllCategoriesAsync()
+        //{
+        //    var categories = await _categoryRepository.GetAllAsync();
+        //    if (!categories.Any())
+        //        return false;
+
+        //    foreach (var category in categories)
+        //    {
+        //        _categoryRepository.Delete(category);
+        //    }
+        //    await _categoryRepository.SaveChangesAsync();
+        //    return true;
+        //}
+        //public async Task BulkAddCategoriesAsync(IEnumerable<string> categoryNames)
+        //{
+        //    foreach (var name in categoryNames)
+        //    {
+        //        var category = new Category { Name = name };
+        //        await AddCategoryAsync(category);
+        //    }
+        //}
     }
 }

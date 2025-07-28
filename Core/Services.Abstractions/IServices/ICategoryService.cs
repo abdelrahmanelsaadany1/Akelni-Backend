@@ -12,5 +12,10 @@ namespace Services.Abstractions.ICategoryService
         Task<Category> GetCategoryByNameAsync(string name);
         Task UpdateCategoryAsync(int id, string newName);
         Task DeleteCategoryAsync(int id);
+
+        // Delete all categories
+        //Task DeleteAllCategoriesAsync();
+        //Task<bool> DeleteAllCategoriesAsync();
+
     }
 }

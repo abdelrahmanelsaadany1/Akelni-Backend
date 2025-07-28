@@ -123,6 +123,24 @@ namespace FoodCourt.Controllers.CategoryController
             }
         }
 
+        //[HttpDelete("DeleteAll")]
+        //public async Task<IActionResult> DeleteAllCategories()
+        //{
+        //    try
+        //    {
+        //        bool anyDeleted = await _categoryService.DeleteAllCategoriesAsync();
+        //        if (!anyDeleted)
+        //            return NoContent(); // 204
+
+        //        return Ok("All categories deleted successfully!");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return BadRequest(ex.Message);
+        //    }
+        //}
+
+
         //[HttpPost("BulkAdd")]
         //public async Task<IActionResult> BulkAddCategories([FromBody] string[] categoryNames)
         //{
