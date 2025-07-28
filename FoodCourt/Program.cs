@@ -86,15 +86,31 @@ namespace FoodCourt
                     };
                 });
 
+            //builder.Services.AddScoped<FacebookAuthService>();
+
+
             // Facebook and google
             builder.Services.AddAuthentication()
                 .AddGoogle(options =>
                 {
                     options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "";
                     options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
-                });
+                })
+                .AddFacebook(options =>
+                {
 
-            // Allow CORS --2
+                    options.ClientId = builder.Configuration["Authentication:Facebook:AppId"] ?? "";
+                    options.ClientSecret = builder.Configuration["Authentication:Facebook:AppSecret"] ?? "";
+                    options.Fields.Add("name");
+                });
+                //.AddFacebook(options =>
+                //{
+                //    options.AppId = builder.Configuration["Authentication:Facebook:AppId"] ?? "";
+                //    options.AppSecret = builder.Configuration["Authentication:Facebook:AppSecret"] ?? "";
+                //    options.Scope.Add("email");
+                //    options.Fields.Add("email");
+                //});
+                // Allow CORS --2
             builder.Services.AddCors(opt =>
             {
                 opt.AddPolicy(corsPolicyName,
