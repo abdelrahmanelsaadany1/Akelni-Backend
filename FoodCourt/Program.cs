@@ -1,4 +1,5 @@
 using Domain.Contracts;
+using Domain.Contracts.Item;
 using Domain.Entities;
 using Domain.Entities.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -11,7 +12,7 @@ using Services.Abstractions.ICategoryService;
 using Services.Abstractions.IServices;
 using Services.Auth;
 using Services.CategoryService;
-using Services.Services;
+
 using Sieve.Services;
 using System.Text;
 
@@ -60,6 +61,11 @@ namespace FoodCourt
             builder.Services.AddScoped<IResturantService, ResturantService>();
             builder.Services.AddScoped<IOrderService, OrderService>();
             builder.Services.AddScoped<IItemService, ItemService>();
+
+
+            builder.Services.AddScoped<IAddOnService, AddOnService>();
+            builder.Services.AddScoped<IComboService, ComboService>();
+            builder.Services.AddScoped(typeof(IItemRepository<>), typeof(ItemRepository<>));
 
 
             //order 
