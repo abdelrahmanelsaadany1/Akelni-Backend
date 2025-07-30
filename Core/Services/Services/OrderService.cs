@@ -25,6 +25,8 @@ namespace Services.CategoryService // Adjust namespace as needed
         private readonly IExtendedRepository<Combo> _comboRepository;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IExtendedRepository<Restaurant> _restaurantRepository;
+        private readonly IExtendedRepository<ItemAddOn> _itemAddOnRepo;
+        private readonly IExtendedRepository<ItemCombo> _itemComboRepo;
 
         public OrderService(
             IExtendedRepository<Order> orderRepository,
@@ -35,6 +37,8 @@ namespace Services.CategoryService // Adjust namespace as needed
             IExtendedRepository<AddOn> addOnRepository,
             IExtendedRepository<Combo> comboRepository,
             IExtendedRepository<Restaurant> restaurantRepository,
+            IExtendedRepository<ItemAddOn> itemAddOnRepo,
+            IExtendedRepository<ItemCombo> itemComboRepo,
             IHttpContextAccessor httpContextAccessor)
         {
             _orderRepository = orderRepository;
@@ -46,92 +50,86 @@ namespace Services.CategoryService // Adjust namespace as needed
             _comboRepository = comboRepository;
             _restaurantRepository = restaurantRepository;
             _httpContextAccessor = httpContextAccessor;
+            _itemAddOnRepo = itemAddOnRepo;
+            _itemComboRepo = itemComboRepo;
+
         }
 
         public async Task AddOrderAsync(Order order, List<OrderItemCreateDto> orderItems)
         {
-            try
+            // Set CustomerId if not already set
+            if (string.IsNullOrEmpty(order.CustomerId))
             {
-                // ✅ Check if restaurant exists
-                var restaurant = await _restaurantRepository.GetByIdAsync(order.RestaurantId);
-                if (restaurant == null)
-                    throw new Exception("Please choose an existing restaurant.");
+                order.CustomerId = GetCurrentUserId();
+            }
 
-                // Set up order properties
-                order.CreatedAt = DateTime.UtcNow;
-                order.Status = Order.OrderStatus.Pending;
-                var userId = GetCurrentUserId();
-                order.CustomerId = userId;
-                order.DeliveryFee = CalculateDeliveryFee(order.DistanceKm);
-                order.PlatformFee = CalculatePlatformFee();
-                order.SubTotal = 0; // Will be calculated and updated later
+            order.Items ??= new List<OrderItem>();
 
-                // Save order first to get the ID
-                await _orderRepository.AddAsync(order);
+            foreach (var itemDto in orderItems)
+            {
+                // Validate item
+                var item = await _itemRepository.GetByIdAsync(itemDto.ItemId);
+                if (item == null)
+                    throw new Exception($"Item with ID {itemDto.ItemId} not found.");
 
-                decimal subTotal = 0;
+                if (itemDto.Quantity <= 0 || itemDto.Quantity > 10000)
+                    throw new Exception($"Quantity for item {itemDto.ItemId} is invalid.");
 
-                // Process all order items
-                foreach (var itemDto in orderItems)
+                var itemPrice = item.Price;
+                var totalPrice = itemPrice * itemDto.Quantity;
+
+                var orderItem = new OrderItem
                 {
-                    var item = await _itemRepository.GetByIdAsync(itemDto.ItemId);
-                    if (item == null)
-                        throw new ArgumentException($"Item with ID {itemDto.ItemId} not found");
+                    ItemId = itemDto.ItemId,
+                    Quantity = itemDto.Quantity,
+                    ItemPrice = itemPrice,
+                    TotalPrice = totalPrice
+                };
 
-                    var orderItem = new OrderItem
+                // ✅ Get valid AddOnIds and ComboIds for this item from DB
+                var validAddOnIds = await _itemAddOnRepo.FindAsync(ia => ia.ItemId == itemDto.ItemId);
+                var validComboIds = await _itemComboRepo.FindAsync(ic => ic.ItemId == itemDto.ItemId);
+
+                var allowedAddOnIds = validAddOnIds.Select(ia => ia.AddOnId).ToHashSet();
+                var allowedComboIds = validComboIds.Select(ic => ic.ComboId).ToHashSet();
+
+                // ✅ Add only valid AddOns
+                var orderItemAddOns = itemDto.AddOnIds
+                    .Where(addOnId => allowedAddOnIds.Contains(addOnId))
+                    .Select(addOnId => new OrderItemAddOn
                     {
-                        OrderId = order.Id, // Now has a valid ID
-                        ItemId = itemDto.ItemId,
-                        Quantity = itemDto.Quantity
-                    };
+                        AddOnId = addOnId
+                    })
+                    .ToList();
 
-                    // Save order item to get its ID
-                    await _orderItemRepository.AddAsync(orderItem);
-
-                    decimal itemTotal = item.Price * itemDto.Quantity;
-
-                    // Process AddOns
-                    foreach (var addOnId in itemDto.AddOnIds ?? new List<int>())
+                // ✅ Add only valid Combos
+                var orderItemCombos = itemDto.ComboIds
+                    .Where(comboId => allowedComboIds.Contains(comboId))
+                    .Select(comboId => new OrderItemCombo
                     {
-                        var addOn = await _addOnRepository.GetByIdAsync(addOnId);
-                        if (addOn == null)
-                            throw new Exception($"AddOn with ID {addOnId} not found.");
+                        ComboId = comboId
+                    })
+                    .ToList();
 
-                        await _orderItemAddOnRepository.AddAsync(new OrderItemAddOn
-                        {
-                            OrderItemId = orderItem.Id, // Now has a valid ID
-                            AddOnId = addOnId
-                        });
-                        itemTotal += addOn.AdditionalPrice * itemDto.Quantity;
-                    }
+                orderItem.AddOns = orderItemAddOns;
+                orderItem.Combos = orderItemCombos;
 
-                    // Process Combos
-                    foreach (var comboId in itemDto.ComboIds ?? new List<int>())
-                    {
-                        var combo = await _comboRepository.GetByIdAsync(comboId);
-                        if (combo == null)
-                            throw new Exception($"Combo with ID {comboId} not found.");
-
-                        await _orderItemComboRepository.AddAsync(new OrderItemCombo
-                        {
-                            OrderItemId = orderItem.Id, // Now has a valid ID
-                            ComboId = comboId
-                        });
-                        itemTotal += combo.ComboPrice * itemDto.Quantity;
-                    }
-
-                    subTotal += itemTotal;
-                }
-
-                // Update the order with calculated subtotal
-                order.SubTotal = subTotal;
-                await _orderRepository.UpdateAsync(order);
+                order.Items.Add(orderItem);
             }
-            catch (Exception ex)
-            {
-                throw new Exception($"Error creating order: {ex.Message}", ex);
-            }
+
+            // Calculate fees and totals
+            order.DeliveryFee = CalculateDeliveryFee(order.DistanceKm);
+            order.PlatformFee = CalculatePlatformFee();
+
+            // Calculate SubTotal
+            order.SubTotal = order.Items.Sum(item => item.TotalPrice);
+
+            order.CreatedAt = DateTime.UtcNow;
+            order.Status = Order.OrderStatus.Pending;
+
+            await _orderRepository.AddAsync(order);
         }
+
 
         public async Task<IEnumerable<OrderResponseDto>> GetAllOrdersAsync()
         {
@@ -234,6 +232,7 @@ namespace Services.CategoryService // Adjust namespace as needed
             order.Status = status;
             await _orderRepository.UpdateAsync(order);
         }
+
 
         public async Task DeleteOrderAsync(int id)
         {

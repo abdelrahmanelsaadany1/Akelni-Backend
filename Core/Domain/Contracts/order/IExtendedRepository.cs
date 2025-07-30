@@ -2,6 +2,7 @@
 using Domain.Entities;
 using Microsoft.EntityFrameworkCore.Query;
 using System.Linq.Expressions;
+using static Sieve.Extensions.MethodInfoExtended;
 
 public interface IExtendedRepository<TEntity> : IGenericRepository<TEntity> where TEntity : BaseEntity
 {
@@ -13,4 +14,7 @@ public interface IExtendedRepository<TEntity> : IGenericRepository<TEntity> wher
 
     Task UpdateAsync(TEntity entity);
     Task DeleteAsync(int id);
+
+    Task<IEnumerable<TEntity>> FindAsync(Expression<Func<TEntity, bool>> predicate);
+
 }

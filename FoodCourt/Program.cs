@@ -66,10 +66,14 @@ namespace FoodCourt
             builder.Services.AddScoped<IAddOnService, AddOnService>();
             builder.Services.AddScoped<IComboService, ComboService>();
             builder.Services.AddScoped(typeof(IItemRepository<>), typeof(ItemRepository<>));
+       
+
 
 
             //order 
             builder.Services.AddScoped(typeof(IExtendedRepository<>), typeof(OrderRepository<>));
+            builder.Services.AddScoped<IExtendedRepository<ItemAddOn>, OrderRepository<ItemAddOn>>();
+            builder.Services.AddScoped<IExtendedRepository<ItemCombo>, OrderRepository<ItemCombo>>();
 
             // OrderService registration (this is missing from your Program.cs)
             builder.Services.AddScoped<IOrderService, OrderService>();

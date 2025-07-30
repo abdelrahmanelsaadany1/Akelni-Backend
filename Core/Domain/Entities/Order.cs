@@ -26,7 +26,7 @@ namespace Domain.Entities
         public int RestaurantId { get; set; }
         public virtual Restaurant? Restaurant { get; set; }
 
-        public virtual ICollection<OrderItem?> Items { get; set; }
+        public virtual ICollection<OrderItem?> Items { get; set; } = new List<OrderItem>();
         public virtual Payment? Payment { get; set; }
 
     }
