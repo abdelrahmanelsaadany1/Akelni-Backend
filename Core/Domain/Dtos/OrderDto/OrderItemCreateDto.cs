@@ -13,7 +13,8 @@ namespace Domain.Dtos.OrderDto
         public int ItemId { get; set; }
 
         [Required]
-        [Range(1, int.MaxValue, ErrorMessage = "Quantity must be at least 1")]
+        
+        [Range(1, 1000, ErrorMessage = "Quantity must be between 1 and 1000.")]
         public int Quantity { get; set; }
 
         public List<int> AddOnIds { get; set; } = new List<int>();

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text;
 using Domain.Contracts;
+using Domain.Contracts.Item;
 using Domain.Entities;
 using Domain.Entities.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -13,7 +14,7 @@ using Services.Abstractions.ICategoryService;
 using Services.Abstractions.IServices;
 using Services.Auth;
 using Services.CategoryService;
-using Services.Services;
+
 using Sieve.Services;
 
 namespace FoodCourt
@@ -65,8 +66,17 @@ namespace FoodCourt
             builder.Services.AddScoped<IItemService, ItemService>();
 
 
+            builder.Services.AddScoped<IAddOnService, AddOnService>();
+            builder.Services.AddScoped<IComboService, ComboService>();
+            builder.Services.AddScoped(typeof(IItemRepository<>), typeof(ItemRepository<>));
+       
+
+
+
             //order 
             builder.Services.AddScoped(typeof(IExtendedRepository<>), typeof(OrderRepository<>));
+            builder.Services.AddScoped<IExtendedRepository<ItemAddOn>, OrderRepository<ItemAddOn>>();
+            builder.Services.AddScoped<IExtendedRepository<ItemCombo>, OrderRepository<ItemCombo>>();
 
             // OrderService registration (this is missing from your Program.cs)
             builder.Services.AddScoped<IOrderService, OrderService>();

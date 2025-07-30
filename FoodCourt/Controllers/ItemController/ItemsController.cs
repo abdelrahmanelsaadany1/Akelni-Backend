@@ -1,4 +1,5 @@
-﻿using Domain.Dtos.ItemDto;
+﻿
+using Domain.Dtos.ItemDto;
 using Microsoft.AspNetCore.Mvc;
 using Services.Abstractions.IServices;
 
@@ -16,7 +17,7 @@ namespace FoodCourt.Controllers
         }
 
         [HttpPost("Add")]
-        public async Task<IActionResult> Add([FromBody] ItemClassDto dto)
+        public async Task<IActionResult> Add([FromBody] ItemCreateUpdateDto dto)
         {
             try
             {
@@ -25,7 +26,12 @@ namespace FoodCourt.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new
+                {
+                    message = ex.Message,
+                    inner = ex.InnerException?.Message,
+                    stack = ex.StackTrace
+                });
             }
         }
 
@@ -51,7 +57,7 @@ namespace FoodCourt.Controllers
         }
 
         [HttpPut("Update/{id}")]
-        public async Task<IActionResult> Update(int id, [FromBody] ItemClassDto dto)
+        public async Task<IActionResult> Update(int id, [FromBody] ItemCreateUpdateDto dto)
         {
             try
             {
@@ -60,7 +66,12 @@ namespace FoodCourt.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest(new
+                {
+                    message = ex.Message,
+                    inner = ex.InnerException?.Message,
+                    stack = ex.StackTrace
+                });
             }
         }
 
@@ -74,7 +85,12 @@ namespace FoodCourt.Controllers
             }
             catch (Exception ex)
             {
-                return NotFound(ex.Message);
+                return BadRequest(new
+                {
+                    message = ex.Message,
+                    inner = ex.InnerException?.Message,
+                    stack = ex.StackTrace
+                });
             }
         }
     }

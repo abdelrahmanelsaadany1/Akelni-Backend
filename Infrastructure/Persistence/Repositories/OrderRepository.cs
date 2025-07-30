@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Query;
 using Persistence.Data;
 using System;
 using System.Linq.Expressions;
+using static Sieve.Extensions.MethodInfoExtended;
 
 public class OrderRepository<TEntity> : IExtendedRepository<TEntity> where TEntity : BaseEntity
 {
@@ -78,4 +79,10 @@ public class OrderRepository<TEntity> : IExtendedRepository<TEntity> where TEnti
             await _context.SaveChangesAsync();
         }
     }
+    public async Task<IEnumerable<TEntity>> FindAsync(Expression<Func<TEntity, bool>> predicate)
+    {
+        return await _context.Set<TEntity>().Where(predicate).ToListAsync();
+    }
+
+
 }

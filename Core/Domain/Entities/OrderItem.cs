@@ -15,6 +15,8 @@ namespace Domain.Entities
         public int ItemId { get; set; }
         public virtual Item Item { get; set; }
         public int Quantity { get; set; }
+        public decimal ItemPrice { get; set; } // ← stored from Item.Price
+        public decimal TotalPrice { get; set; } // ← ItemPrice * Quantity + AddOns + Combos
 
         public virtual ICollection<OrderItemAddOn> AddOns { get; set; }
         public virtual ICollection<OrderItemCombo> Combos { get; set; }

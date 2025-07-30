@@ -6,18 +6,14 @@ using System.Threading.Tasks;
 
 namespace Domain.Dtos.ItemDto
 {
-    public class ItemClassDto
+    public class ItemCreateUpdateDto
     {
-
-        public int Id { get; set; } // needed for update/get
         public string Name { get; set; }
         public string Description { get; set; }
         public decimal Price { get; set; }
         public string? ImageUrl { get; set; }
-
         public int CategoryId { get; set; }
         public int RestaurantId { get; set; }
-
         public List<int>? AddOnIds { get; set; }
         public List<int>? ComboIds { get; set; }
     }
