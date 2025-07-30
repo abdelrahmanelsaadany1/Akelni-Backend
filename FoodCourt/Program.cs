@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using System.Text;
 using Domain.Contracts;
 using Domain.Entities;
 using Domain.Entities.Identity;
@@ -13,7 +15,6 @@ using Services.Auth;
 using Services.CategoryService;
 using Services.Services;
 using Sieve.Services;
-using System.Text;
 
 namespace FoodCourt
 {
@@ -55,7 +56,9 @@ namespace FoodCourt
             // Email Service
             builder.Services.AddScoped<EmailService>();
             // Location Service
-            builder.Services.AddScoped<LocationService>();
+            //builder.Services.AddScoped<ILocationService, LocationService>();
+            //builder.Services.AddHttpClient<LocationService>();
+            //builder.Services.AddMemoryCache();
 
             builder.Services.AddScoped<IResturantService, ResturantService>();
             builder.Services.AddScoped<IOrderService, OrderService>();
@@ -74,9 +77,9 @@ namespace FoodCourt
                 opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
                 opt.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             })
-                .AddJwtBearer(opt =>
+                .AddJwtBearer(options =>
                 {
-                    opt.TokenValidationParameters = new TokenValidationParameters
+                    options.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuer = true,
                         ValidateAudience = true,
@@ -84,9 +87,41 @@ namespace FoodCourt
                         ValidateIssuerSigningKey = true,
                         ValidIssuer = builder.Configuration["Jwt:Issuer"],
                         ValidAudience = builder.Configuration["Jwt:Audience"],
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not found in configuration")))
+                        IssuerSigningKey = new SymmetricSecurityKey(
+                            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+                        RoleClaimType = ClaimTypes.Role,
+                        NameClaimType = ClaimTypes.NameIdentifier
+
+                    };
+
+                    options.Events = new JwtBearerEvents
+                    {
+                        OnAuthenticationFailed = context =>
+                        {
+                            Console.WriteLine("JWT Auth failed: " + context.Exception.Message);
+                            return Task.CompletedTask;
+                        },
+                        OnTokenValidated = context =>
+                        {
+                            Console.WriteLine("JWT token validated for: " + context.Principal.Identity.Name);
+                            return Task.CompletedTask;
+                        }
                     };
                 });
+
+            //.AddJwtBearer(opt =>
+            //{
+            //    opt.TokenValidationParameters = new TokenValidationParameters
+            //    {
+            //        ValidateIssuer = true,
+            //        ValidateAudience = true,
+            //        ValidateLifetime = true,
+            //        ValidateIssuerSigningKey = true,
+            //        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            //        ValidAudience = builder.Configuration["Jwt:Audience"],
+            //        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not found in configuration")))
+            //    };
+            //});
 
             //builder.Services.AddScoped<FacebookAuthService>();
 
@@ -154,8 +189,11 @@ namespace FoodCourt
             app.UseCors(corsPolicyName);
 
             app.UseHttpsRedirection();
+            app.UseRouting();
             app.UseAuthentication();
             app.UseAuthorization();
+            app.UseStaticFiles();
+
 
             app.MapGet("/", () => " FoodCourt API — VERSION 1.7 ");
             app.MapControllers();

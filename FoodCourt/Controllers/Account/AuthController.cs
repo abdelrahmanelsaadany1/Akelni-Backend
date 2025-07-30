@@ -22,7 +22,7 @@ namespace FoodCourt.Controllers.Account
         private readonly SignInManager<User> _signInManager;
         private readonly JwtService _jwtService;
         private readonly EmailService _emailService;
-        //private readonly ILocationService _locationService;
+        private readonly ILocationService _locationService;
         private readonly IConfiguration _configuration;
         //private readonly FacebookAuthService _facebookAuthService;
 
@@ -46,6 +46,83 @@ namespace FoodCourt.Controllers.Account
 
         // Endpoints to update/delete user information (Profile) either Admin, Chef , or Customer
 
+        //[Authorize(Roles = "Admin, Chef, Customer")]
+        //[HttpPut("profile")]
+        //public async Task<IActionResult> UpdateProfile([FromBody] ProfileDto prf)
+        //{
+        //    if (!ModelState.IsValid)
+        //        return BadRequest(ModelState);
+
+        //    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //    if (string.IsNullOrEmpty(userId))
+        //        return Unauthorized("User not found");
+
+        //    var user = await _userManager.FindByIdAsync(userId);
+        //    if (user == null)
+        //        return NotFound("User not found");
+
+        //    // Handle image upload automatically if provided
+        //    if (!string.IsNullOrEmpty(prf.ImageData))
+        //    {
+        //        try
+        //        {
+        //            var imageUrl = await SaveImageFromBase64(prf.ImageData, userId);
+        //            user.ImageUrl = imageUrl;
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            return BadRequest(new { message = "Failed to process image", error = ex.Message });
+        //        }
+        //    }
+        //    else if (!string.IsNullOrEmpty(prf.ImageUrl))
+        //    {
+        //        // Keep existing image URL if no new image provided
+        //        user.ImageUrl = prf.ImageUrl;
+        //    }
+
+        //    user.Email = prf.Email;
+        //    user.PhoneNumber = prf.PhoneNumber;
+        //    user.FirstName = prf.FirstName;
+        //    user.LastName = prf.LastName;
+
+        //    user.Addresses.Clear();
+        //    foreach (var addrDto in prf.Addresses)
+        //    {
+        //        user.Addresses.Add(new Address
+        //        {
+        //            Description = addrDto.Description,
+        //            Street = addrDto.Street,
+        //            City = addrDto.City,
+        //            Country = addrDto.Country,
+        //            Zone = addrDto.Zone,
+        //            UserId = user.Id
+        //        });
+        //    }
+
+        //    // Handle password change if requested
+        //    if (!string.IsNullOrEmpty(prf.OldPassword) && !string.IsNullOrEmpty(prf.NewPassword))
+        //    {
+        //        var result = await _userManager.ChangePasswordAsync(user, prf.OldPassword, prf.NewPassword);
+        //        if (!result.Succeeded)
+        //        {
+        //            var errors = result.Errors.Select(e => e.Description);
+        //            return BadRequest(new { message = "Password change failed", errors });
+        //        }
+        //    }
+
+        //    var updateResult = await _userManager.UpdateAsync(user);
+        //    if (!updateResult.Succeeded)
+        //    {
+        //        var errors = updateResult.Errors.Select(e => e.Description);
+        //        return BadRequest(new { message = "Update failed", errors });
+        //    }
+
+        //    return Ok(new
+        //    {
+        //        message = "Profile updated successfully"});
+
+        //}
+
         [Authorize(Roles = "Admin, Chef, Customer")]
         [HttpPut("profile")]
         public async Task<IActionResult> UpdateProfile([FromBody] ProfileDto prf)
@@ -57,16 +134,38 @@ namespace FoodCourt.Controllers.Account
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized("User not found");
 
-            var user = await _userManager.FindByIdAsync(userId);
+            // FIXED: Include Addresses when fetching user
+            var user = await _userManager.Users
+                .Include(u => u.Addresses)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
             if (user == null)
                 return NotFound("User not found");
 
+            // Handle image upload automatically if provided
+            if (!string.IsNullOrEmpty(prf.ImageData))
+            {
+                try
+                {
+                    var imageUrl = await SaveImageFromBase64(prf.ImageData, userId);
+                    user.ImageUrl = imageUrl;
+                }
+                catch (Exception ex)
+                {
+                    return BadRequest(new { message = "Failed to process image", error = ex.Message });
+                }
+            }
+            else if (!string.IsNullOrEmpty(prf.ImageUrl))
+            {
+                user.ImageUrl = prf.ImageUrl;
+            }
+
             user.Email = prf.Email;
-            user.ImageUrl = prf.ImageUrl;
             user.PhoneNumber = prf.PhoneNumber;
             user.FirstName = prf.FirstName;
             user.LastName = prf.LastName;
 
+            // FIXED: Now this will work correctly since Addresses are loaded
             user.Addresses.Clear();
             foreach (var addrDto in prf.Addresses)
             {
@@ -90,7 +189,6 @@ namespace FoodCourt.Controllers.Account
                     var errors = result.Errors.Select(e => e.Description);
                     return BadRequest(new { message = "Password change failed", errors });
                 }
-
             }
 
             var updateResult = await _userManager.UpdateAsync(user);
@@ -100,9 +198,70 @@ namespace FoodCourt.Controllers.Account
                 return BadRequest(new { message = "Update failed", errors });
             }
 
-
-            return Ok("Profile updated successfully");
+            return Ok(new { message = "Profile updated successfully" });
         }
+
+        private async Task<string> SaveImageFromBase64(string base64Data, string userId)
+        {
+            // Remove data:image/jpeg;base64, prefix if present
+            var base64String = base64Data.Contains(",") ? base64Data.Split(',')[1] : base64Data;
+
+            // Convert base64 to byte array
+            var imageBytes = Convert.FromBase64String(base64String);
+
+            // Generate unique filename
+            var fileName = $"profile_{userId}_{Guid.NewGuid()}.jpg";
+
+            // Define upload path (adjust to your needs)
+            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profiles");
+
+            // Create directory if it doesn't exist
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var filePath = Path.Combine(uploadsFolder, fileName);
+
+            // Save file
+            await System.IO.File.WriteAllBytesAsync(filePath, imageBytes);
+            // Return the URL path
+            return $"/uploads/profiles/{fileName}";
+        }
+
+
+        //[Authorize(Roles = "Admin, Chef, Customer")]
+        //[HttpGet("profile")]
+        //public async Task<IActionResult> GetProfile()
+        //{
+        //    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //    if (string.IsNullOrEmpty(userId))
+        //        return Unauthorized("User not found");
+
+        //    var user = await _userManager.Users
+        //        .Include(u => u.Addresses)
+        //        .FirstOrDefaultAsync(u => u.Id == userId);
+
+        //    if (user == null)
+        //        return NotFound("User not found");
+
+        //    var profile = new ProfileDto
+        //    {
+        //        FirstName = user.FirstName,
+        //        LastName = user.LastName,
+        //        Email = user.Email,
+        //        ImageUrl = user.ImageUrl,
+        //        PhoneNumber = user.PhoneNumber,
+        //        Addresses = user.Addresses.Select(a => new AddressDto
+        //        {
+        //            Description = a.Description,
+        //            Street = a.Street,
+        //            City = a.City,
+        //            Country = a.Country,
+        //            Zone = a.Zone
+        //        }).ToList()
+        //    };
+
+        //    return Ok(profile);
+        //}
 
         [Authorize(Roles = "Admin, Chef, Customer")]
         [HttpGet("profile")]
@@ -128,6 +287,7 @@ namespace FoodCourt.Controllers.Account
                 PhoneNumber = user.PhoneNumber,
                 Addresses = user.Addresses.Select(a => new AddressDto
                 {
+                    Id = a.Id, // FIXED: Added missing ID mapping
                     Description = a.Description,
                     Street = a.Street,
                     City = a.City,
@@ -138,6 +298,55 @@ namespace FoodCourt.Controllers.Account
 
             return Ok(profile);
         }
+
+        //[Authorize(Roles = "Admin, Chef, Customer")]
+        //[HttpGet("profile")]
+        //public async Task<IActionResult> GetProfile()
+        //{
+        //    var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        //    if (string.IsNullOrEmpty(userId))
+        //        return Unauthorized("User not found");
+
+        //    var user = await _userManager.Users
+        //        .Include(u => u.Addresses)
+        //        .FirstOrDefaultAsync(u => u.Id == userId);
+
+        //    if (user == null)
+        //        return NotFound("User not found");
+
+        //    // Load location names via joins or services
+        //    var allGovernorates = await _locationService.GetGovernoratesAsync();
+        //    var allCities = await _locationService.GetAllCitiesAsync();
+        //    var allZones = await _locationService.GetAllZonesAsync();
+
+        //    var profile = new ProfileDto
+        //    {
+        //        FirstName = user.FirstName,
+        //        LastName = user.LastName,
+        //        Email = user.Email,
+        //        ImageUrl = user.ImageUrl,
+        //        PhoneNumber = user.PhoneNumber,
+        //        Addresses = user.Addresses.Select(a => new AddressFormData
+        //        {
+        //            Id = a.Id,
+        //            Description = a.Description,
+        //            Street = a.Street,
+        //            GovernorateId = a.GovernorateId,
+        //            GovernorateName = allGovernorates.FirstOrDefault(g => g.Id == a.GovernorateId)?.Name ?? "",
+        //            CityId = a.CityId,
+        //            CityName = allCities.FirstOrDefault(c => c.Id == a.CityId)?.Name ?? "",
+        //            ZoneId = a.ZoneId,
+        //            ZoneName = allZones.FirstOrDefault(z => z.Id == a.ZoneId)?.Name ?? "",
+        //            BuildingNumber = a.BuildingNumber,
+        //            FloorNumber = a.FloorNumber,
+        //            ApartmentNumber = a.ApartmentNumber,
+        //            IsDefault = a.IsDefault
+        //        }).ToList()
+        //    };
+
+        //    return Ok(profile);
+        //}
+
 
         //// a) GET /locations/governorates
         ////→ returns all governorates
@@ -193,7 +402,69 @@ namespace FoodCourt.Controllers.Account
         //public async Task<IActionResult> GetZones(int cityId) =>
         //    Ok(await _locationService.GetZonesByCityAsync(cityId));
 
+        // Add these endpoints to your AuthController class
 
+        //[HttpGet("locations/governorates")]
+        //public async Task<IActionResult> GetGovernorates()
+        //{
+        //    try
+        //    {
+        //        var governorates = await _locationService.GetAllGovernoratesAsync();
+        //        return Ok(new { success = true, data = governorates });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { success = false, message = "Failed to fetch governorates", error = ex.Message });
+        //    }
+        //}
+
+        //[HttpGet("locations/cities")]
+        //public async Task<IActionResult> GetCities([FromQuery] int governorateId)
+        //{
+        //    try
+        //    {
+        //        if (governorateId <= 0)
+        //            return BadRequest(new { success = false, message = "Invalid governorate ID" });
+
+        //        var cities = await _locationService.GetCitiesByGovernorateAsync(governorateId);
+        //        return Ok(new { success = true, data = cities });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { success = false, message = "Failed to fetch cities", error = ex.Message });
+        //    }
+        //}
+
+        //[HttpGet("locations/zones")]
+        //public async Task<IActionResult> GetZones([FromQuery] int cityId)
+        //{
+        //    try
+        //    {
+        //        if (cityId <= 0)
+        //            return BadRequest(new { success = false, message = "Invalid city ID" });
+
+        //        var zones = await _locationService.GetZonesByCityAsync(cityId);
+        //        return Ok(new { success = true, data = zones });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { success = false, message = "Failed to fetch zones", error = ex.Message });
+        //    }
+        //}
+
+        //[HttpGet("locations/hierarchy")]
+        //public async Task<IActionResult> GetLocationHierarchy()
+        //{
+        //    try
+        //    {
+        //        var hierarchy = await _locationService.GetFullHierarchyAsync();
+        //        return Ok(new { success = true, data = hierarchy });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, new { success = false, message = "Failed to fetch location hierarchy", error = ex.Message });
+        //    }
+        //}
 
         [HttpPost("register")]
         public async Task<IActionResult> Register(RegisterDto dto)
