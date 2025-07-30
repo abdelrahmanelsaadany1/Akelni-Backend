@@ -263,10 +263,15 @@ namespace FoodCourt.Controllers.Account
         //    return Ok(profile);
         //}
 
-        [Authorize(Roles = "Admin, Chef, Customer")]
         [HttpGet("profile")]
+        [Authorize(Roles = "Admin, Chef, Customer")]
         public async Task<IActionResult> GetProfile()
         {
+            Console.WriteLine("🔐 Claims:");
+            foreach (var claim in User.Claims)
+            {
+                Console.WriteLine($"👉 {claim.Type} = {claim.Value}");
+            }
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized("User not found");

@@ -72,42 +72,82 @@ namespace FoodCourt
             builder.Services.AddScoped<IOrderService, OrderService>();
             builder.Services.AddHttpContextAccessor();
             // Authentication
-            builder.Services.AddAuthentication(opt =>
+            //builder.Services.AddAuthentication(opt =>
+            //{
+            //    opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            //    opt.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            //})
+            //    .AddJwtBearer(options =>
+            //    {
+            //        options.TokenValidationParameters = new TokenValidationParameters
+            //        {
+            //            ValidateIssuer = true,
+            //            //ValidateAudience = true,
+            //            ValidateAudience = false,
+            //            ValidateLifetime = true,
+            //            ValidateIssuerSigningKey = true,
+            //            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            //            ValidAudience = builder.Configuration["Jwt:Audience"],
+            //            IssuerSigningKey = new SymmetricSecurityKey(
+            //                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
+            //            RoleClaimType = ClaimTypes.Role,
+            //            NameClaimType = ClaimTypes.NameIdentifier
+
+            //        };
+
+            //        options.Events = new JwtBearerEvents
+            //        {
+            //            OnAuthenticationFailed = context =>
+            //            {
+            //                Console.WriteLine("JWT Auth failed: " + context.Exception.Message);
+            //                return Task.CompletedTask;
+            //            },
+            //            OnTokenValidated = context =>
+            //            {
+            //                Console.WriteLine("JWT token validated for: " + context.Principal.Identity.Name);
+            //                return Task.CompletedTask;
+            //            }
+            //        };
+            //    });
+
+            builder.Services.AddAuthentication(options =>
             {
-                opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                opt.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             })
-                .AddJwtBearer(options =>
-                {
-                    options.TokenValidationParameters = new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidateAudience = true,
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true,
-                        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                        ValidAudience = builder.Configuration["Jwt:Audience"],
-                        IssuerSigningKey = new SymmetricSecurityKey(
-                            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
-                        RoleClaimType = ClaimTypes.Role,
-                        NameClaimType = ClaimTypes.NameIdentifier
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(
+            Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
 
-                    };
+        // ✅ Set these exactly (do NOT use ClaimTypes.Role)
+        RoleClaimType = ClaimTypes.Role,
+        NameClaimType = ClaimTypes.NameIdentifier
+    };
 
-                    options.Events = new JwtBearerEvents
-                    {
-                        OnAuthenticationFailed = context =>
-                        {
-                            Console.WriteLine("JWT Auth failed: " + context.Exception.Message);
-                            return Task.CompletedTask;
-                        },
-                        OnTokenValidated = context =>
-                        {
-                            Console.WriteLine("JWT token validated for: " + context.Principal.Identity.Name);
-                            return Task.CompletedTask;
-                        }
-                    };
-                });
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine("❌ JWT Auth failed: " + context.Exception.Message);
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            Console.WriteLine("✅ JWT token validated for: " + context.Principal.Identity?.Name);
+            return Task.CompletedTask;
+        }
+    };
+});
+
 
             //.AddJwtBearer(opt =>
             //{
@@ -133,13 +173,13 @@ namespace FoodCourt
                     options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "";
                     options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
                 });
-                //.AddFacebook(options =>
-                //{
+            //.AddFacebook(options =>
+            //{
 
-                //    options.ClientId = builder.Configuration["Authentication:Facebook:AppId"] ?? "";
-                //    options.ClientSecret = builder.Configuration["Authentication:Facebook:AppSecret"] ?? "";
-                //    options.Fields.Add("name");
-                //});
+            //    options.ClientId = builder.Configuration["Authentication:Facebook:AppId"] ?? "";
+            //    options.ClientSecret = builder.Configuration["Authentication:Facebook:AppSecret"] ?? "";
+            //    options.Fields.Add("name");
+            //});
             //.AddFacebook(options =>
             //{
             //    options.AppId = builder.Configuration["Authentication:Facebook:AppId"] ?? "";
@@ -165,7 +205,6 @@ namespace FoodCourt
 
             //AutoMapper
             builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
-
 
 
             var app = builder.Build();
