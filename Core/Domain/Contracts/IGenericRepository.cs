@@ -9,6 +9,7 @@ namespace Domain.Contracts
 {
     public interface IGenericRepository<TEntity> where TEntity : BaseEntity
     {
+        IQueryable<TEntity> GetAllQuerable();
         Task<IEnumerable<TEntity>> GetAllAsync();
         Task<TEntity> GetByIdAsync(int id);
         Task<TEntity> GetByIdAsync(int id, Func<IQueryable<TEntity>, IIncludableQueryable<TEntity, object>> include = null);

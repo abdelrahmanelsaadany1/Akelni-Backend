@@ -83,6 +83,9 @@ public class OrderRepository<TEntity> : IExtendedRepository<TEntity> where TEnti
     {
         return await _context.Set<TEntity>().Where(predicate).ToListAsync();
     }
-
+    public IQueryable<TEntity> GetAllQuerable()
+    {
+        throw new NotImplementedException();
+    }
 
 }
