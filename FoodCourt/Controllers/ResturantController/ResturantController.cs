@@ -1,8 +1,11 @@
-﻿using Domain.Dtos.ResturantDto;
+﻿using Domain.Contracts.SieveProcessor;
+using Domain.Dtos.ResturantDto;
 using Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Services.Abstractions.ICategoryService;
+using Services.Abstractions.IServices;
 using System.Security.Claims;
 
 [ApiController]
@@ -10,20 +13,29 @@ using System.Security.Claims;
 public class RestaurantsController : ControllerBase
 {
     private readonly IResturantService _restaurantService;
-
-    public RestaurantsController(IResturantService restaurantService)
+    private readonly IGenericService<Restaurant> _genericService;
+    public RestaurantsController(
+        IResturantService restaurantService,
+        IGenericService<Restaurant> genericService
+        )
     {
         _restaurantService = restaurantService;
+        _genericService = genericService;
     }
 
 
     // Authorized Admin, Chef can view all restaurants
     [HttpGet]
     [Authorize (Roles = "Admin,Customer")]
-    public async Task<IActionResult> GetAllRestaurants()
+    public async Task<IActionResult> GetAllRestaurants([FromQuery] CustomSieveModel sieveModel)
     {
-        var restaurants = await _restaurantService.GetAllRestaurantsAsync();
-        return Ok(restaurants);
+        //var restaurants = await _restaurantService.GetAllRestaurantsAsync();
+        var result = _genericService.GetAllSieveAsync(sieveModel);
+        return Ok(new
+        {
+            categories = await result.ToListAsync(),
+            totalCount = await result.CountAsync()
+        });
     }
 
     // Authorized Chef can create a restaurant

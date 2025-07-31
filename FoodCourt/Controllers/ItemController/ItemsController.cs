@@ -1,7 +1,11 @@
 ﻿
+using Domain.Contracts.SieveProcessor;
 using Domain.Dtos.ItemDto;
+using Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Services.Abstractions.IServices;
+using Sieve.Models;
 
 namespace FoodCourt.Controllers
 {
@@ -10,10 +14,14 @@ namespace FoodCourt.Controllers
     public class ItemsController : ControllerBase
     {
         private readonly IItemService _itemService;
-
-        public ItemsController(IItemService itemService)
+        private readonly IGenericService<Item> _genericService;
+        public ItemsController(
+            IItemService itemService,
+            IGenericService<Item> genericService
+            )
         {
             _itemService = itemService;
+            _genericService = genericService;
         }
 
         [HttpPost("Add")]
@@ -35,11 +43,22 @@ namespace FoodCourt.Controllers
             }
         }
 
+        //https://localhost:7045/api/Items/GetAll?filters=restaurantId==22,CategoryId==59,price%3E20
+
         [HttpGet("GetAll")]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll([FromQuery] CustomSieveModel sieveModel)
         {
-            var items = await _itemService.GetAllItemsAsync();
-            return Ok(items);
+            //var items = await _itemService.GetAllItemsAsync();
+            //var categories = await _categoryService.GetAllCategoriesAsync();
+            //var categories = _context.Categories.AsQueryable();
+            //var result = _sieveProcessor.Apply(sieveModel, categories,applyPagination:true);
+            var result = _genericService.GetAllSieveAsync(sieveModel);
+
+            return Ok(new
+            {
+                categories = await result.ToListAsync(),
+                totalCount = await result.CountAsync()
+            });
         }
 
         [HttpGet("GetById/{id}")]
