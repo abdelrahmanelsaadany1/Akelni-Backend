@@ -33,6 +33,9 @@ namespace Persistence.Data
         public DbSet<Payment> Payments { get; set; }
         public DbSet<Review> Reviews { get; set; }
         public DbSet<DeliveryRate> DeliveryRates { get; set; }
+        public DbSet<ItemSizePrice> ItemSizePrices { get; set; }
+
+
 
         #endregion
     }

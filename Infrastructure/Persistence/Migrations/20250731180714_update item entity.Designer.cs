@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Persistence.Data;
 
@@ -11,9 +12,11 @@ using Persistence.Data;
 namespace Persistence.Migrations
 {
     [DbContext(typeof(FoodCourtDbContext))]
-    partial class FoodCourtDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250731180714_update item entity")]
+    partial class updateitementity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -33,19 +36,11 @@ namespace Persistence.Migrations
                     b.Property<decimal>("AdditionalPrice")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("ImageUrl")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("RestaurantId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("RestaurantId");
 
                     b.ToTable("AddOns");
                 });
@@ -78,19 +73,11 @@ namespace Persistence.Migrations
                     b.Property<decimal>("ComboPrice")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("ImageUrl")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("RestaurantId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("RestaurantId");
 
                     b.ToTable("Combos");
                 });
@@ -142,9 +129,6 @@ namespace Persistence.Migrations
                     b.Property<int?>("Size")
                         .HasColumnType("int");
 
-                    b.Property<int>("SizeType")
-                        .HasColumnType("int");
-
                     b.Property<decimal?>("Weight")
                         .HasColumnType("decimal(18,2)");
 
@@ -165,14 +149,8 @@ namespace Persistence.Migrations
                     b.Property<int>("AddOnId")
                         .HasColumnType("int");
 
-                    b.Property<decimal>("AdditionalPrice")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<int>("Id")
                         .HasColumnType("int");
-
-                    b.Property<string>("ImageUrl")
-                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("ItemId", "AddOnId");
 
@@ -189,44 +167,14 @@ namespace Persistence.Migrations
                     b.Property<int>("ComboId")
                         .HasColumnType("int");
 
-                    b.Property<decimal>("ComboPrice")
-                        .HasColumnType("decimal(18,2)");
-
                     b.Property<int>("Id")
                         .HasColumnType("int");
-
-                    b.Property<string>("ImageUrl")
-                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("ItemId", "ComboId");
 
                     b.HasIndex("ComboId");
 
                     b.ToTable("ItemCombos");
-                });
-
-            modelBuilder.Entity("Domain.Entities.ItemSizePrice", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ItemId")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("Price")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("Size")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ItemId");
-
-                    b.ToTable("ItemSizePrices");
                 });
 
             modelBuilder.Entity("Domain.Entities.Order", b =>
@@ -437,24 +385,6 @@ namespace Persistence.Migrations
                     b.ToTable("Reviews");
                 });
 
-            modelBuilder.Entity("Domain.Entities.AddOn", b =>
-                {
-                    b.HasOne("Domain.Entities.Restaurant", "Restaurant")
-                        .WithMany()
-                        .HasForeignKey("RestaurantId");
-
-                    b.Navigation("Restaurant");
-                });
-
-            modelBuilder.Entity("Domain.Entities.Combo", b =>
-                {
-                    b.HasOne("Domain.Entities.Restaurant", "Restaurant")
-                        .WithMany()
-                        .HasForeignKey("RestaurantId");
-
-                    b.Navigation("Restaurant");
-                });
-
             modelBuilder.Entity("Domain.Entities.Item", b =>
                 {
                     b.HasOne("Domain.Entities.Category", "Category")
@@ -508,17 +438,6 @@ namespace Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Combo");
-
-                    b.Navigation("Item");
-                });
-
-            modelBuilder.Entity("Domain.Entities.ItemSizePrice", b =>
-                {
-                    b.HasOne("Domain.Entities.Item", "Item")
-                        .WithMany("SizePricing")
-                        .HasForeignKey("ItemId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
 
                     b.Navigation("Item");
                 });
@@ -637,8 +556,6 @@ namespace Persistence.Migrations
                     b.Navigation("ItemAddOns");
 
                     b.Navigation("ItemCombos");
-
-                    b.Navigation("SizePricing");
                 });
 
             modelBuilder.Entity("Domain.Entities.Order", b =>
