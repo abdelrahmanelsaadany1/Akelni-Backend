@@ -112,5 +112,21 @@ namespace FoodCourt.Controllers
                 });
             }
         }
+
+        // Get All Item by Restaurant Id
+        [HttpGet("GetAllByRestaurantId/{restaurantId}")]
+        public async Task<IActionResult> GetAllByRestaurantId(int restaurantId)
+        {
+            var items = await _itemService.GetAllItemsByRestaurantIdAsync(restaurantId);
+            return Ok(items);
+        }
+
+        // Get Items by Restaurant Id and Category Id
+        [HttpGet("GetByRestaurantIdAndCategoryId/{restaurantId}/{categoryId}")]
+        public async Task<IActionResult> GetByRestaurantIdAndCategoryId(int restaurantId, int categoryId)
+        {
+            var items = await _itemService.GetItemsByRestaurantIdAndCategoryIdAsync(restaurantId, categoryId);
+            return Ok(items);
+        }
     }
 }

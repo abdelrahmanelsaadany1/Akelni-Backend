@@ -23,8 +23,7 @@ public class RestaurantsController : ControllerBase
         _genericService = genericService;
     }
 
-
-    // Authorized Admin, Chef can view all restaurants
+    // Authorized Admin and Customer can view all restaurants
     [HttpGet]
     [Authorize(Roles = "Admin,Customer")]
     public async Task<IActionResult> GetAllRestaurants([FromQuery] CustomSieveModel sieveModel)
@@ -37,6 +36,17 @@ public class RestaurantsController : ControllerBase
             totalCount = await result.CountAsync()
         });
     }
+    //[Authorize (Roles = "Admin,Chef")]
+    //public async Task<IActionResult> GetAllRestaurants()
+    //{
+    //    //var restaurants = await _restaurantService.GetAllRestaurantsAsync();
+    //    var result = _genericService.GetAllSieveAsync(sieveModel);
+    //    return Ok(new
+    //    {
+    //        categories = await result.ToListAsync(),
+    //        totalCount = await result.CountAsync()
+    //    });
+    //}
 
     // Authorized Chef can create a restaurant
     [HttpPost]

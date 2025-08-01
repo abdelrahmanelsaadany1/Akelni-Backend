@@ -51,4 +51,27 @@ public class ItemRepository<TEntity> : GenericRepository<TEntity>, IItemReposito
     {
         return await _context.Set<TEntity>().AnyAsync(e => e.Id == id);
     }
+
+    public async Task<IEnumerable<TEntity>> GetAllWithIncludesAsync(
+        Expression<Func<TEntity, bool>> predicate,
+        string? includeProperties = null)
+    {
+        IQueryable<TEntity> query = _context.Set<TEntity>();
+
+        if (!string.IsNullOrWhiteSpace(includeProperties))
+        {
+            foreach (var includeProp in includeProperties.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                query = query.Include(includeProp.Trim());
+            }
+        }
+
+        if (predicate != null)
+        {
+            query = query.Where(predicate);
+        }
+
+        return await query.ToListAsync();
+    }
+
 }

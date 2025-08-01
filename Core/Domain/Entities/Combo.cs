@@ -11,6 +11,9 @@ namespace Domain.Entities
      
         public string Name { get; set; }
         public decimal ComboPrice { get; set; }
+        public string? ImageUrl { get; set; }
+        public int? RestaurantId { get; set; }
+        public virtual Restaurant? Restaurant { get; set; }
 
         public virtual ICollection<ItemCombo> ItemCombos { get; set; }
         public virtual ICollection<OrderItemCombo> OrderItemCombos { get; set; }

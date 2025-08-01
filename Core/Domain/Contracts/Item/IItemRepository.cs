@@ -10,6 +10,10 @@ namespace Domain.Contracts.Item
         where TEntity : BaseEntity
     {
         Task<IEnumerable<TEntity>> GetAllWithIncludesAsync(string includeProperties);
+        Task<IEnumerable<TEntity>> GetAllWithIncludesAsync(
+                            Expression<Func<TEntity, bool>> predicate,
+                            string? includeProperties);
+
         Task<TEntity?> GetByIdWithIncludesAsync(int id, string includeProperties);
         Task<IEnumerable<TEntity>> FindAsync(Expression<Func<TEntity, bool>> predicate);
         Task<bool> ExistsAsync(int id);
