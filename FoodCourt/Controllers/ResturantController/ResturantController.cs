@@ -26,7 +26,7 @@ public class RestaurantsController : ControllerBase
 
     // Authorized Admin, Chef can view all restaurants
     [HttpGet]
-    [Authorize (Roles = "Admin,Customer")]
+    [Authorize(Roles = "Admin,Customer")]
     public async Task<IActionResult> GetAllRestaurants([FromQuery] CustomSieveModel sieveModel)
     {
         //var restaurants = await _restaurantService.GetAllRestaurantsAsync();

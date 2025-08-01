@@ -43,7 +43,7 @@ namespace FoodCourt.Controllers
             }
         }
 
-        //https://localhost:7045/api/Items/GetAll?filters=restaurantId==22,CategoryId==59,price%3E20
+        // api/Items/GetAll?filters=restaurantId==22,CategoryId==59,price>20
 
         [HttpGet("GetAll")]
         public async Task<IActionResult> GetAll([FromQuery] CustomSieveModel sieveModel)
