@@ -17,5 +17,7 @@ namespace Domain.Contracts.Item
         Task<TEntity?> GetByIdWithIncludesAsync(int id, string includeProperties);
         Task<IEnumerable<TEntity>> FindAsync(Expression<Func<TEntity, bool>> predicate);
         Task<bool> ExistsAsync(int id);
+        //GetAllItemsByRestaurantIdAsync
+        Task<IEnumerable<TEntity>> GetItemsByRestaurantIdWithIncludesAsync(int restaurantId, string includeProperties);
     }
 }

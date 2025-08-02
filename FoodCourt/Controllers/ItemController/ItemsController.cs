@@ -75,6 +75,21 @@ namespace FoodCourt.Controllers
             }
         }
 
+
+        //[HttpGet("GetById/{id}")]
+        //public async Task<IActionResult> GetById(int id)
+        //{
+        //    try
+        //    {
+        //        var item = await _itemService.GetAllItemsByRestaurantIdAsync(id);
+        //        return Ok(item);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return NotFound(ex.Message);
+        //    }
+        //}
+
         [HttpPut("Update/{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] ItemCreateUpdateDto dto)
         {
@@ -127,6 +142,21 @@ namespace FoodCourt.Controllers
         {
             var items = await _itemService.GetItemsByRestaurantIdAndCategoryIdAsync(restaurantId, categoryId);
             return Ok(items);
+        }
+
+        // Get Items by Restaurant Id with Includes
+        [HttpGet("GetByRestaurantIdWithIncludes/{restaurantId}")]
+        public async Task<IActionResult> GetByRestaurantIdWithIncludes(int restaurantId)
+        {
+            try
+            {
+                var items = await _itemService.GetAllItemsByRestaurantIdAsync(restaurantId);
+                return Ok(items);
+            }
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
+            }
         }
     }
 }

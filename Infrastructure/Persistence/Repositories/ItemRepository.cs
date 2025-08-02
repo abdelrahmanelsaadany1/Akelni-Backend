@@ -74,4 +74,19 @@ public class ItemRepository<TEntity> : GenericRepository<TEntity>, IItemReposito
         return await query.ToListAsync();
     }
 
+    public async Task<IEnumerable<TEntity>> GetItemsByRestaurantIdWithIncludesAsync(int restaurantId, string includeProperties)
+    {
+        IQueryable<TEntity> query = _context.Set<TEntity>()
+            .Where(item => EF.Property<int>(item, "RestaurantId") == restaurantId);
+
+        if (!string.IsNullOrWhiteSpace(includeProperties))
+        {
+            foreach (var includeProp in includeProperties.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                query = query.Include(includeProp.Trim());
+            }
+        }
+
+        return await query.ToListAsync();
+    }
 }

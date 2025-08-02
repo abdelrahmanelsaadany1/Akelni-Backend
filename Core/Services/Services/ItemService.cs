@@ -2,6 +2,8 @@
 using AutoMapper;
 using Domain.Contracts;
 using Domain.Contracts.Item;
+using Domain.Dtos.AddOnDto;
+using Domain.Dtos.ComboDto;
 using Domain.Dtos.ItemDto;
 using Domain.Entities;
 using Services.Abstractions.IServices;
@@ -485,7 +487,7 @@ public class ItemService : IItemService
     public async Task<IEnumerable<ItemClassDto>> GetAllItemsAsync()
     {
         var items = await _itemRepo.GetAllWithIncludesAsync(
-            includeProperties: "ItemAddOns,ItemAddOns.AddOn,ItemCombos,ItemCombos.Combo"
+            includeProperties: "ItemAddOns,ItemAddOns.AddOn,ItemCombos,ItemCombos.Combo,SizePricing"
         );
         return _mapper.Map<IEnumerable<ItemClassDto>>(items);
     }
@@ -493,51 +495,316 @@ public class ItemService : IItemService
     {
         var items = await _itemRepo.GetAllWithIncludesAsync(
             filter,
-            includeProperties: "ItemAddOns,ItemAddOns.AddOn,ItemCombos,ItemCombos.Combo"
+            includeProperties: "ItemAddOns,ItemAddOns.AddOn,ItemCombos,ItemCombos.Combo,SizePricing"
         );
 
         return _mapper.Map<IEnumerable<ItemClassDto>>(items);
     }
 
 
-    public async Task<ItemClassDto> GetItemByIdAsync(int id)
+    //public async Task<ItemClassDto> GetItemByIdAsync(int id)
+    //{
+    //    var item = await _itemRepo.GetByIdWithIncludesAsync(
+    //        id,
+    //        includeProperties: "ItemAddOns,ItemAddOns.AddOn,ItemCombos,ItemCombos.Combo"
+    //    );
+
+    //    if (item == null)
+    //        throw new Exception("Item not found");
+
+    //    return _mapper.Map<ItemClassDto>(item);
+    //}
+    //public async Task<ItemClassDto> GetItemByIdAsync(int id)
+    //{
+    //    var item = await _itemRepo.GetByIdWithIncludesAsync(
+    //        id,
+    //        includeProperties: "ItemAddOns,ItemAddOns.AddOn,ItemCombos,ItemCombos.Combo"
+    //    );
+
+    //    if (item == null)
+    //        throw new Exception("Item not found");
+
+    //    var sizePricing = await _itemSizePriceRepo.FindAsync(x => x.ItemId == id);
+
+    //    return new ItemClassDto
+    //    {
+    //        Id = item.Id,
+    //        Name = item.Name,
+    //        Description = item.Description,
+    //        Price = item.Price,
+    //        SizeType = item.SizeType,
+    //        Size = item.Size,
+    //        Weight = item.Weight.HasValue ? (float)item.Weight.Value : null,
+    //        ImageUrl = item.ImageUrl,
+    //        CategoryId = item.CategoryId,
+    //        RestaurantId = item.RestaurantId,
+    //        SizePricing = sizePricing.Select(sp => new ItemSizePriceDto
+    //        {
+    //            Size = sp.Size,
+    //            Price = sp.Price
+    //        }).ToList(),
+    //        AddOns = item.ItemAddOns?.Select(ia => new AddOnGetDto
+    //        {
+    //            Id = ia.AddOn.Id,
+    //            Name = ia.AddOn.Name,
+    //            AdditionalPrice = ia.AddOn.AdditionalPrice,
+    //            ImageUrl = ia.AddOn.ImageUrl
+    //        }).ToList(),
+    //        Combos = item.ItemCombos?.Select(ic => new ComboGetDto
+    //        {
+    //            Id = ic.Combo.Id,
+    //            Name = ic.Combo.Name,
+    //            ComboPrice = ic.Combo.ComboPrice,
+    //            ImageUrl = ic.Combo.ImageUrl
+    //        }).ToList()
+    //    };
+    //}
+
+    public async Task<List<ItemClassDto>> GetItemsByRestaurantIdAsync(int restaurantId)
     {
-        var item = await _itemRepo.GetByIdWithIncludesAsync(
-            id,
-            includeProperties: "ItemAddOns,ItemAddOns.AddOn,ItemCombos,ItemCombos.Combo"
+        var items = await _itemRepo.GetItemsByRestaurantIdWithIncludesAsync(
+            restaurantId,
+            includeProperties: "ItemAddOns,ItemAddOns.AddOn,ItemCombos,ItemCombos.Combo,SizePricing"
         );
 
-        if (item == null)
-            throw new Exception("Item not found");
+        var result = new List<ItemClassDto>();
 
-        return _mapper.Map<ItemClassDto>(item);
+        foreach (var item in items)
+        {
+            // ✅ Get size pricing for each item
+            var sizePricing = await _itemSizePriceRepo.FindAsync(x => x.ItemId == item.Id);
+
+            result.Add(new ItemClassDto
+            {
+                Id = item.Id,
+                Name = item.Name,
+                Description = item.Description,
+                Price = item.Price,
+                SizeType = item.SizeType,
+                Size = item.Size,
+                Weight = item.Weight.HasValue ? (float)item.Weight.Value : null,
+                ImageUrl = item.ImageUrl,
+                CategoryId = item.CategoryId,
+                RestaurantId = item.RestaurantId,
+
+                //// ✅ Include size pricing in the list response
+                //SizePricing = sizePricing.Select(sp => new ItemSizePriceDto
+                //{
+                //    Size = sp.Size,
+                //    Price = sp.Price
+                //}).ToList(),
+
+                SizePricing = item.SizePricing?.Select(sp => new ItemSizePriceDto
+                {
+                    Size = sp.Size,
+                    Price = sp.Price
+                }).ToList() ?? new List<ItemSizePriceDto>(),
+
+                AddOns = item.ItemAddOns?.Select(ia => new AddOnGetDto
+                {
+                    Id = ia.AddOn.Id,
+                    Name = ia.AddOn.Name,
+                    AdditionalPrice = ia.AdditionalPrice,
+                    ImageUrl = ia.ImageUrl
+                }).ToList(),
+
+                Combos = item.ItemCombos?.Select(ic => new ComboGetDto
+                {
+                    Id = ic.Combo.Id,
+                    Name = ic.Combo.Name,
+                    ComboPrice = ic.ComboPrice,
+                    ImageUrl = ic.ImageUrl
+                }).ToList()
+            });
+        }
+
+        return result;
     }
+
+    //public async Task UpdateItemAsync(int id, ItemCreateUpdateDto dto)
+    //{
+    //    ValidateItemDtoAsync(dto);
+
+    //    var item = await _itemRepo.GetByIdAsync(id) ?? throw new Exception("Item not found");
+
+    //    _mapper.Map(dto, item);
+    //    _itemRepo.Update(item);
+
+    //    var existingAddOns = await _itemAddOnRepo.FindAsync(x => x.ItemId == id);
+    //    foreach (var a in existingAddOns) _itemAddOnRepo.Delete(a);
+
+    //    var existingCombos = await _itemComboRepo.FindAsync(x => x.ItemId == id);
+    //    foreach (var c in existingCombos) _itemComboRepo.Delete(c);
+
+    //    if (dto.AddOnIds != null)
+    //    {
+    //        foreach (var addOnId in dto.AddOnIds)
+    //            await _itemAddOnRepo.AddAsync(new ItemAddOn { ItemId = id, AddOnId = addOnId });
+    //    }
+
+    //    if (dto.ComboIds != null)
+    //    {
+    //        foreach (var comboId in dto.ComboIds)
+    //            await _itemComboRepo.AddAsync(new ItemCombo { ItemId = id, ComboId = comboId });
+    //    }
+
+    //    await _itemRepo.SaveChangesAsync();
+    //    await _itemAddOnRepo.SaveChangesAsync();
+    //    await _itemComboRepo.SaveChangesAsync();
+    //}
 
     public async Task UpdateItemAsync(int id, ItemCreateUpdateDto dto)
     {
-        ValidateItemDtoAsync(dto);
+        await ValidateItemDtoAsync(dto);
 
         var item = await _itemRepo.GetByIdAsync(id) ?? throw new Exception("Item not found");
 
-        _mapper.Map(dto, item);
+        // Manually update properties
+        item.Name = dto.Name;
+        item.Description = dto.Description;
+        item.Price = dto.Price;
+        item.ImageUrl = dto.ImageUrl;
+        item.CategoryId = dto.CategoryId;
+        item.RestaurantId = dto.RestaurantId;
+        item.SizeType = dto.SizeType;
+        item.Size = dto.Size;
+        item.Weight = dto.Weight.HasValue ? (decimal?)dto.Weight.Value : null;
+
+        // Set SizeType-specific fields
+        switch (dto.SizeType)
+        {
+            case ItemSizeType.Fixed:
+                item.Size = null;
+                item.Weight = null;
+                break;
+            case ItemSizeType.Sized:
+                if (dto.SizePricing == null || !dto.SizePricing.Any())
+                    throw new ArgumentException("SizePricing is required for Sized items.");
+                item.Size = dto.Size ?? 0;
+                break;
+            case ItemSizeType.Weighted:
+                if (!dto.Weight.HasValue)
+                    throw new ArgumentException("Weight is required for Weighted items.");
+                item.Size = null;
+                break;
+        }
+
         _itemRepo.Update(item);
 
+        // Remove old size pricing
+        var existingSizePricing = await _itemSizePriceRepo.FindAsync(x => x.ItemId == id);
+        foreach (var sp in existingSizePricing)
+            _itemSizePriceRepo.Delete(sp);
+
+        // Add new size pricing if needed
+        if (dto.SizeType == ItemSizeType.Sized && dto.SizePricing != null)
+        {
+            foreach (var sp in dto.SizePricing)
+            {
+                var itemSizePrice = new ItemSizePrice
+                {
+                    ItemId = item.Id,
+                    Size = sp.Size,
+                    Price = sp.Price
+                };
+                await _itemSizePriceRepo.AddAsync(itemSizePrice);
+            }
+            await _itemSizePriceRepo.SaveChangesAsync();
+        }
+
+        // Remove old AddOns and Combos
         var existingAddOns = await _itemAddOnRepo.FindAsync(x => x.ItemId == id);
         foreach (var a in existingAddOns) _itemAddOnRepo.Delete(a);
 
         var existingCombos = await _itemComboRepo.FindAsync(x => x.ItemId == id);
         foreach (var c in existingCombos) _itemComboRepo.Delete(c);
 
+        // Add AddOns by IDs
         if (dto.AddOnIds != null)
         {
             foreach (var addOnId in dto.AddOnIds)
-                await _itemAddOnRepo.AddAsync(new ItemAddOn { ItemId = id, AddOnId = addOnId });
+            {
+                var addOn = await _addOnRepo.GetByIdAsync(addOnId);
+                if (addOn == null)
+                    throw new ArgumentException($"AddOn with ID {addOnId} does not exist.");
+
+                await _itemAddOnRepo.AddAsync(new ItemAddOn
+                {
+                    ItemId = id,
+                    AddOnId = addOnId,
+                    AdditionalPrice = addOn.AdditionalPrice,
+                    ImageUrl = addOn.ImageUrl
+                });
+            }
         }
 
+        // Add new AddOns inline
+        if (dto.AddOns != null && dto.AddOns.Any())
+        {
+            foreach (var addOnDto in dto.AddOns)
+            {
+                var newAddOn = new AddOn
+                {
+                    Name = addOnDto.Name,
+                    AdditionalPrice = addOnDto.AdditionalPrice,
+                    ImageUrl = addOnDto.ImageUrl,
+                    RestaurantId = item.RestaurantId
+                };
+                await _addOnRepo.AddAsync(newAddOn);
+                await _addOnRepo.SaveChangesAsync();
+
+                await _itemAddOnRepo.AddAsync(new ItemAddOn
+                {
+                    ItemId = id,
+                    AddOnId = newAddOn.Id,
+                    AdditionalPrice = newAddOn.AdditionalPrice,
+                    ImageUrl = newAddOn.ImageUrl
+                });
+            }
+        }
+
+        // Add Combos by IDs
         if (dto.ComboIds != null)
         {
             foreach (var comboId in dto.ComboIds)
-                await _itemComboRepo.AddAsync(new ItemCombo { ItemId = id, ComboId = comboId });
+            {
+                var combo = await _comboRepo.GetByIdAsync(comboId);
+                if (combo == null)
+                    throw new ArgumentException($"Combo with ID {comboId} does not exist.");
+
+                await _itemComboRepo.AddAsync(new ItemCombo
+                {
+                    ItemId = id,
+                    ComboId = comboId,
+                    ComboPrice = combo.ComboPrice,
+                    ImageUrl = combo.ImageUrl
+                });
+            }
+        }
+
+        // Add new Combos inline
+        if (dto.Combos != null && dto.Combos.Any())
+        {
+            foreach (var comboDto in dto.Combos)
+            {
+                var newCombo = new Combo
+                {
+                    Name = comboDto.Name,
+                    ComboPrice = comboDto.ComboPrice,
+                    ImageUrl = comboDto.ImageUrl,
+                    RestaurantId = item.RestaurantId
+                };
+                await _comboRepo.AddAsync(newCombo);
+                await _comboRepo.SaveChangesAsync();
+
+                await _itemComboRepo.AddAsync(new ItemCombo
+                {
+                    ItemId = id,
+                    ComboId = newCombo.Id,
+                    ComboPrice = newCombo.ComboPrice,
+                    ImageUrl = newCombo.ImageUrl
+                });
+            }
         }
 
         await _itemRepo.SaveChangesAsync();
@@ -546,16 +813,46 @@ public class ItemService : IItemService
     }
 
 
+    //public async Task DeleteItemAsync(int id)
+    //{
+    //    var item = await _itemRepo.GetByIdAsync(id);
+    //    if (item == null)
+    //        throw new Exception("Item not found");
+
+    //    _itemRepo.Delete(item);
+    //    await _itemRepo.SaveChangesAsync();
+    //}
+
     public async Task DeleteItemAsync(int id)
     {
         var item = await _itemRepo.GetByIdAsync(id);
         if (item == null)
             throw new Exception("Item not found");
 
+        // Remove related ItemAddOns
+        var addOns = await _itemAddOnRepo.FindAsync(x => x.ItemId == id);
+        foreach (var addOn in addOns)
+            _itemAddOnRepo.Delete(addOn);
+
+        // Remove related ItemCombos
+        var combos = await _itemComboRepo.FindAsync(x => x.ItemId == id);
+        foreach (var combo in combos)
+            _itemComboRepo.Delete(combo);
+
+        // Remove related ItemSizePrices
+        var sizePrices = await _itemSizePriceRepo.FindAsync(x => x.ItemId == id);
+        foreach (var sp in sizePrices)
+            _itemSizePriceRepo.Delete(sp);
+
+        // Remove the item itself
         _itemRepo.Delete(item);
+
+        await _itemAddOnRepo.SaveChangesAsync();
+        await _itemComboRepo.SaveChangesAsync();
+        await _itemSizePriceRepo.SaveChangesAsync();
         await _itemRepo.SaveChangesAsync();
     }
-    
+
     public async Task<bool> ExistsAsync(int id)
     {
         return await _itemRepo.ExistsAsync(id);
@@ -618,5 +915,21 @@ public class ItemService : IItemService
             throw new ArgumentException("Invalid restaurant ID.");
 
         return GetItemsAsync(x => x.RestaurantId == restaurantId);
+    }
+
+    public Task<ItemClassDto> GetItemByIdAsync(int id)
+    {
+        if (id <= 0)
+            throw new ArgumentException("Invalid item ID.");
+        return _itemRepo.GetByIdWithIncludesAsync(
+            id,
+            includeProperties: "ItemAddOns,ItemAddOns.AddOn,ItemCombos,ItemCombos.Combo,SizePricing"
+        ).ContinueWith(task =>
+        {
+            var item = task.Result;
+            if (item == null)
+                throw new Exception("Item not found");
+            return _mapper.Map<ItemClassDto>(item);
+        });
     }
 }

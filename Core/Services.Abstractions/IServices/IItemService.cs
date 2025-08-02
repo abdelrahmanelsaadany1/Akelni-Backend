@@ -13,6 +13,8 @@ namespace Services.Abstractions.IServices
         Task AddItemAsync(ItemCreateUpdateDto dto);
         Task<IEnumerable<ItemClassDto>> GetAllItemsAsync();
         Task<ItemClassDto> GetItemByIdAsync(int id);
+        //GetItemsByRestaurantIdWithIncludesAsync
+        //Task<ItemClassDto> GetItemsByRestaurantIdWithIncludesAsync(int restaurantId);
         Task UpdateItemAsync(int id, ItemCreateUpdateDto dto);
         Task DeleteItemAsync(int id);
         // Get items by restaurant ID and category ID
