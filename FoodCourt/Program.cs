@@ -29,6 +29,7 @@ namespace FoodCourt
 
             // Add services to the container.
             builder.Services.AddControllers();
+            builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("StripeSettings"));
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
