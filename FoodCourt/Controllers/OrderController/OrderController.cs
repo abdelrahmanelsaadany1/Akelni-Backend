@@ -2,21 +2,26 @@
 using Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Services.Abstractions.ICategoryService;
+using Stripe.Checkout;
+using Stripe;
 using System.Security.Claims;
 
 namespace Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Require authentication for all order operations
+    //[Authorize] // Require authentication for all order operations
     public class OrdersController : ControllerBase
     {
         private readonly IOrderService _orderService;
+        private readonly StripeSettings _stripeSettings;
 
-        public OrdersController(IOrderService orderService)
+        public OrdersController(IOptions<StripeSettings> stripeSettings, IOrderService orderService)
         {
             _orderService = orderService;
+            _stripeSettings = stripeSettings.Value;
         }
 
         [HttpPost]
@@ -212,6 +217,62 @@ namespace Controllers
             {
                 return NotFound(new { message = ex.Message });
             }
+        }
+
+
+        [HttpPost("create-ckeckout-session")]
+        public IActionResult CreateCheckoutSession([FromBody] int amount)
+        {
+            //var domain = "http://localhost:4200";
+            var domain = "https://localhost:7045";
+            var currency = "egp";
+            var successUrl = domain + "/api/Orders/success";
+            var cancelUrl = domain + "/api/Orders/cancel";
+            //var successUrl = domain + "/success";
+            //var cancelUrl = domain + "/cancel";
+            StripeConfiguration.ApiKey = _stripeSettings.SecretKey;
+
+            var options = new SessionCreateOptions
+            {
+                PaymentMethodTypes = new List<string> { "card" },
+                LineItems = new List<SessionLineItemOptions>
+            {
+                new SessionLineItemOptions
+                {
+                    PriceData = new SessionLineItemPriceDataOptions
+                    {
+                        Currency = currency,
+                        UnitAmount = Convert.ToInt32(amount) * 100,
+                        ProductData = new SessionLineItemPriceDataProductDataOptions
+                        {
+                            Name = "Total Fees",
+                        }
+                    },
+                   Quantity = 1
+                },
+            }
+                ,
+                Mode = "payment",
+                SuccessUrl = successUrl,
+                CancelUrl = cancelUrl,
+            };
+
+            var service = new SessionService();
+            var session = service.Create(options);
+
+            return Ok(new { url = session.Url, id = session.Id, amount = amount });
+        }
+
+        [HttpGet("success")]
+        public IActionResult success()
+        {
+            return Ok();
+        }
+
+        [HttpGet, Route("cancel")]
+        public IActionResult cancel()
+        {
+            return BadRequest();
         }
     }
 }
