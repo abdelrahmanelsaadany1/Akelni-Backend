@@ -30,5 +30,8 @@ namespace Services.Services
             var filteredResult = _sieveProcessor.Apply(sieveModel, entityQuery, applyPagination: true);
             return filteredResult;
         }
+        public List<T> CustomPagination<T>(IEnumerable<T> source, int page, int pageSize) {
+            return source.Skip((page - 1) * pageSize).Take(pageSize).ToList();
+        }
     }
 }
