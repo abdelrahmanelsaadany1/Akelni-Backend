@@ -363,7 +363,7 @@ namespace Controllers
                 //since a successful payment is placed into stripe dashboard, change the status to paid
                 //either is cancelled set it to cancelled
                 await _orderService.UpdateOrderStatusAsync(OrderId, status);
-                return Ok(new {status = ((Order.OrderStatus) status).ToString()});
+                return Ok(new {status = ((Order.OrderStatus) status).ToString(), url = "http://localhost:4200" });
             }
             catch (Exception e)
             {
