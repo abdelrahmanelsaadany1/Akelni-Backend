@@ -1,11 +1,14 @@
-﻿using Domain.Contracts.SieveProcessor;
+﻿using Domain.Contracts;
+using Domain.Contracts.SieveProcessor;
 using Domain.Dtos.ResturantDto;
 using Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Persistence.Data;
 using Services.Abstractions.ICategoryService;
 using Services.Abstractions.IServices;
+using System.Linq;
 using System.Security.Claims;
 
 [ApiController]
@@ -14,13 +17,21 @@ public class RestaurantsController : ControllerBase
 {
     private readonly IResturantService _restaurantService;
     private readonly IGenericService<Restaurant> _genericService;
+
+    readonly FoodCourtDbContext _dbContext;
     public RestaurantsController(
         IResturantService restaurantService,
-        IGenericService<Restaurant> genericService
+        IGenericService<Restaurant> genericService,
+
+        FoodCourtDbContext dbContext
         )
     {
         _restaurantService = restaurantService;
         _genericService = genericService;
+
+        _dbContext = dbContext;
+
+
     }
 
     // Authorized Admin and Customer can view all restaurants
@@ -215,6 +226,62 @@ public class RestaurantsController : ControllerBase
         catch (Exception ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+
+    }
+
+    [HttpGet("customer-restaurant/{id}")]
+    public async Task<IActionResult> GetCustomerRestaurant(int id, [FromQuery] int page = 1 , [FromQuery] int pageSize = 4)
+    {
+        try
+        {
+            //restaurant data include items and category items query on DB
+            var restaurantData = await _dbContext.Restaurants
+                .Where(res => res.Id == id)
+                .Select(r => new {
+                     resName = r.Name,
+                      rating = r.Rating,
+                      resImage = r.ImageUrl,
+                     location = r.Location,
+                      items = r.Items.Select(item => new {
+                               id = item.Id,
+                               name = item.Name,
+                               price = item.Price,
+                               image = item.ImageUrl,
+                               categoryName = item.Category.Name,
+                               categoyId = item.Category.Id
+                           }
+                      ).ToList()
+                
+                             }).FirstOrDefaultAsync();
+
+            //select distinct categories data from previous result
+            var distinctCategories = restaurantData.items
+              .Select(item => new { item.categoyId, item.categoryName })
+              .Distinct()
+              .ToList();
+
+         
+            var itemsPagination = _genericService.CustomPagination(restaurantData.items, page, pageSize);
+            int totalPages = (int)Math.Ceiling((double)restaurantData.items.Count / pageSize);
+            //now display resutls as you like
+            var result = new
+            {
+                resName = restaurantData.resName,
+                rating = restaurantData.rating,
+                resImage = restaurantData.resImage,
+                location = restaurantData.location,
+                items = itemsPagination,
+                categories = distinctCategories,
+                totalPages = totalPages
+            };
+
+
+            return Ok(result);
+        }
+        catch(Exception e)
+        {
+            return BadRequest($"{e.Message}");
         }
     }
 }
