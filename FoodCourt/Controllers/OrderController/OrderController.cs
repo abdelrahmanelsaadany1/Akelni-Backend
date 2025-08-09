@@ -17,6 +17,7 @@ namespace Controllers
     {
         private readonly IOrderService _orderService;
         private readonly StripeSettings _stripeSettings;
+        
 
         public OrdersController(IOptions<StripeSettings> stripeSettings, IOrderService orderService)
         {
@@ -24,35 +25,39 @@ namespace Controllers
             _stripeSettings = stripeSettings.Value;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreateOrder([FromBody] OrderCreateDto dto)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+        //[Authorize("Roles = Admin")]
+        //[HttpPost("create-order")]
+        //public async Task<IActionResult> CreateOrder([FromBody] OrderCreateDto dto)
+        //{
+        //    if (!ModelState.IsValid)
+        //        return BadRequest(ModelState);
 
-            try
-            {
-                var order = new Order
-                {
-                    RestaurantId = dto.RestaurantId,
-                    DistanceKm = dto.DistanceKm,
-                    CreatedAt = DateTime.UtcNow,
-                    Status = Order.OrderStatus.Pending
-                    // CustomerId will be set automatically in the service from claims
-                };
+        //    try
+        //    {
+        //        var order = new Order
+        //        {
+        //            RestaurantId = dto.RestaurantId,
+        //            DistanceKm = dto.DistanceKm,
+        //            CreatedAt = DateTime.UtcNow,
+        //            Status = Order.OrderStatus.Pending
+        //            // CustomerId will be set automatically in the service from claims
+        //        };
 
-                await _orderService.AddOrderAsync(order, dto.Items);
-                return Ok(new { message = "Order created successfully", orderId = order.Id });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return Unauthorized(ex.Message);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-        }
+        //        // after order validation, redirect to the payment page then add order to chef dashboard.
+        //        //this.CreateCheckoutSession(amount);
+
+        //        await _orderService.AddOrderAsync(order, dto.Items);
+        //        return Ok(new { message = "Order created successfully", orderId = order.Id });
+        //    }
+        //    catch (UnauthorizedAccessException ex)
+        //    {
+        //        return Unauthorized(ex.Message);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return BadRequest(new { message = ex.Message });
+        //    }
+        //}
 
         [HttpGet]
         [Authorize(Roles = "Admin")] // Only admins can see all orders
@@ -221,8 +226,44 @@ namespace Controllers
 
 
         [HttpPost("create-ckeckout-session")]
-        public IActionResult CreateCheckoutSession([FromBody] int amount)
+        public async  Task<IActionResult> CreateCheckoutSession([FromBody] OrderCreateDto dto)
         {
+            int OrderId;
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var order = new Order
+                {
+                    RestaurantId = dto.RestaurantId,
+                    DistanceKm = dto.DistanceKm,
+                    CreatedAt = DateTime.UtcNow,
+                    Status = Order.OrderStatus.Pending
+                    // CustomerId will be set automatically in the service from claims
+                };
+                
+
+                await _orderService.AddOrderAsync(order, dto.Items, Convert.ToInt32(dto.amount));
+                //return Ok(new { message = "Order created successfully", orderId = order.Id });
+                OrderId = order.Id;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ex.Message);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+
+            int amount = Convert.ToInt32(dto.amount); 
+
             //var domain = "http://localhost:4200";
             var domain = "https://localhost:7045";
             var currency = "egp";
@@ -250,29 +291,84 @@ namespace Controllers
                     },
                    Quantity = 1
                 },
-            }
-                ,
+            },
+                Metadata = new Dictionary<string, string> {
+                    { "OrderId",  OrderId.ToString() }
+                },
                 Mode = "payment",
-                SuccessUrl = successUrl,
+                SuccessUrl = successUrl + "?session_id={CHECKOUT_SESSION_ID}",
                 CancelUrl = cancelUrl,
             };
 
             var service = new SessionService();
             var session = service.Create(options);
 
-            return Ok(new { url = session.Url, id = session.Id, amount = amount });
+            return Ok(new { url = session.Url, id = session.Id, amount });
         }
 
         [HttpGet("success")]
-        public IActionResult success()
+        public Task<IActionResult>  Success([FromQuery] string session_id)
         {
-            return Ok();
+            //if (string.IsNullOrEmpty(session_id))
+            //    return BadRequest("No session ID provided");
+
+            //SessionService service = new SessionService();
+            //var session = await service.GetAsync(session_id);
+
+            //int OrderId = int.Parse(session.Metadata["OrderId"]);
+
+            //if(OrderId <= 0)
+            //{
+            //    return BadRequest();
+            //}
+
+            //try
+            //{
+            //    //since a successful payment is placed into stripe dashboard, change the status to paid
+            //    await _orderService.UpdateOrderStatusAsync(OrderId, Order.OrderStatus.Paid);
+            //    return Ok();
+
+            //} catch (Exception e)
+            //{
+            //    return NotFound(new { msg = e.Message });
+            //}
+
+            return CheckoutStatus(session_id, Order.OrderStatus.Paid);
+
         }
 
         [HttpGet, Route("cancel")]
-        public IActionResult cancel()
+        public Task<IActionResult> Cancel([FromQuery] string session_id)
         {
-            return BadRequest();
+            return CheckoutStatus(session_id, Order.OrderStatus.Cancelled);
+        }
+
+        private async Task<IActionResult> CheckoutStatus(string session_id, Order.OrderStatus status)
+        {
+            if (string.IsNullOrEmpty(session_id))
+                return BadRequest("No session ID provided");
+
+            SessionService service = new SessionService();
+            var session = await service.GetAsync(session_id);
+
+            int OrderId = int.Parse(session.Metadata["OrderId"]);
+
+            if (OrderId <= 0)
+            {
+                return BadRequest();
+            }
+
+            try
+            {
+                //since a successful payment is placed into stripe dashboard, change the status to paid
+                //either is cancelled set it to cancelled
+                await _orderService.UpdateOrderStatusAsync(OrderId, status);
+                return Ok(new {status = ((Order.OrderStatus) status).ToString()});
+            }
+            catch (Exception e)
+            {
+                return NotFound(new { msg = e.Message });
+            }
         }
     }
 }

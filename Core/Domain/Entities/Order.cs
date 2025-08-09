@@ -9,7 +9,7 @@ namespace Domain.Entities
 {
     public class Order:BaseEntity
     {
-        public enum OrderStatus { Pending, Accepted, Rejected, Paid, InTransit, Delivered }
+        public enum OrderStatus { Pending, Accepted, Rejected, Paid, InTransit, Delivered, Cancelled }
 
 
         public DateTime CreatedAt { get; set; }

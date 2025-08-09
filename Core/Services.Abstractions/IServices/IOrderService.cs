@@ -7,7 +7,7 @@ namespace Services.Abstractions.ICategoryService // Adjust namespace as needed
 {
     public interface IOrderService
     {
-        Task AddOrderAsync(Order order, List<OrderItemCreateDto> orderItems);
+        Task AddOrderAsync(Order order, List<OrderItemCreateDto> orderItems, int totalAmount);
         Task<IEnumerable<OrderResponseDto>> GetAllOrdersAsync();
         Task<OrderResponseDto> GetOrderByIdAsync(int id);
         Task<IEnumerable<OrderResponseDto>> GetOrdersByCustomerIdAsync(string customerId);
