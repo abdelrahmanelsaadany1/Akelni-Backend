@@ -144,7 +144,7 @@ namespace Services.CategoryService // Adjust namespace as needed
         //    // Set CustomerId if not already set
         //    if (string.IsNullOrEmpty(order.CustomerId))
         //    {
-        //        order.CustomerId = "2";//GetCurrentUserId();
+        //        order.CustomerId = GetCurrentUserId();
         //    }
 
         //    order.Items ??= new List<OrderItem>();
