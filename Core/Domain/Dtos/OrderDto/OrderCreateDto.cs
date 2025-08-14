@@ -19,7 +19,7 @@ namespace Domain.Dtos.OrderDto
         [Range(0, double.MaxValue, ErrorMessage = "Distance must be a positive value")]
         public double DistanceKm { get; set; }
 
-        [Required, Range(0, double.MaxValue, ErrorMessage ="Total amount is not valid")]
-        public double amount { get; set; }
+        //[Required, Range(0, double.MaxValue, ErrorMessage ="Total amount is not valid")]
+        //public double amount { get; set; }
     }
 }

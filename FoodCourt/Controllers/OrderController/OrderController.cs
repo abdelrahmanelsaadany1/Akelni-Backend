@@ -229,6 +229,7 @@ namespace Controllers
         public async  Task<IActionResult> CreateCheckoutSession([FromBody] OrderCreateDto dto)
         {
             int OrderId;
+            int OrderTotal;
 
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -245,9 +246,10 @@ namespace Controllers
                 };
                 
 
-                await _orderService.AddOrderAsync(order, dto.Items, Convert.ToInt32(dto.amount));
+                await _orderService.AddOrderAsync(order, dto.Items);
                 //return Ok(new { message = "Order created successfully", orderId = order.Id });
                 OrderId = order.Id;
+                OrderTotal = (int)order.SubTotal;
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -262,7 +264,7 @@ namespace Controllers
                 return BadRequest(new { message = ex.Message });
             }
 
-            int amount = Convert.ToInt32(dto.amount); 
+            int amount = Convert.ToInt32(OrderTotal); 
 
             //var domain = "http://localhost:4200";
             var domain = "https://localhost:7045";
@@ -363,7 +365,13 @@ namespace Controllers
                 //since a successful payment is placed into stripe dashboard, change the status to paid
                 //either is cancelled set it to cancelled
                 await _orderService.UpdateOrderStatusAsync(OrderId, status);
-                return Ok(new {status = ((Order.OrderStatus) status).ToString(), url = "http://localhost:4200" });
+               // return Ok(new {status = ((Order.OrderStatus) status).ToString(), url = "http://localhost:4200" });
+                if(status == Order.OrderStatus.Paid)
+                    return Redirect("http://localhost:4200/success");
+                else
+                    return Redirect("http://localhost:4200/error");
+
+
             }
             catch (Exception e)
             {

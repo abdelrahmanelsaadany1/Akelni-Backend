@@ -56,102 +56,19 @@ namespace Services.CategoryService // Adjust namespace as needed
         }
 
         //total amount is passed
-        public async Task AddOrderAsync(Order order, List<OrderItemCreateDto> orderItems, int totalAmount)
-        {
-            // Set CustomerId if not already set
-            if (string.IsNullOrEmpty(order.CustomerId))
-            {
-                order.CustomerId = "2";//GetCurrentUserId();
-            }
-
-            order.Items ??= new List<OrderItem>();
-
-            //Validate Restaurant
-            var restaurant = await _restaurantRepository.GetByIdAsync(order.RestaurantId);
-            if(restaurant == null)
-            {
-                throw new KeyNotFoundException($"Restaurant with ID {order.RestaurantId} not found.");
-            }
-
-            foreach (var itemDto in orderItems)
-            {
-                // Validate item
-                var item = await _itemRepository.GetByIdAsync(itemDto.ItemId);
-                if (item == null)
-                    throw new Exception($"Item with ID {itemDto.ItemId} not found.");
-
-                if (itemDto.Quantity <= 0 || itemDto.Quantity > 10000)
-                    throw new Exception($"Quantity for item {itemDto.ItemId} is invalid.");
-
-                var itemPrice = item.Price;
-                var totalPrice = itemPrice * itemDto.Quantity;
-
-                var orderItem = new OrderItem
-                {
-                    ItemId = itemDto.ItemId,
-                    Quantity = itemDto.Quantity,
-                    ItemPrice = itemPrice,
-                    TotalPrice = totalPrice
-                };
-
-                // ✅ Get valid AddOnIds and ComboIds for this item from DB
-                var validAddOnIds = await _itemAddOnRepo.FindAsync(ia => ia.ItemId == itemDto.ItemId);
-                var validComboIds = await _itemComboRepo.FindAsync(ic => ic.ItemId == itemDto.ItemId);
-
-                var allowedAddOnIds = validAddOnIds.Select(ia => ia.AddOnId).ToHashSet();
-                var allowedComboIds = validComboIds.Select(ic => ic.ComboId).ToHashSet();
-
-                // ✅ Add only valid AddOns
-                var orderItemAddOns = itemDto.AddOnIds
-                    .Where(addOnId => allowedAddOnIds.Contains(addOnId))
-                    .Select(addOnId => new OrderItemAddOn
-                    {
-                        AddOnId = addOnId
-                    })
-                    .ToList();
-
-                // ✅ Add only valid Combos
-                var orderItemCombos = itemDto.ComboIds
-                    .Where(comboId => allowedComboIds.Contains(comboId))
-                    .Select(comboId => new OrderItemCombo
-                    {
-                        ComboId = comboId
-                    })
-                    .ToList();
-
-                orderItem.AddOns = orderItemAddOns;
-                orderItem.Combos = orderItemCombos;
-
-                order.Items.Add(orderItem);
-            }
-
-            // Calculate fees and totals
-            order.DeliveryFee = CalculateDeliveryFee(order.DistanceKm);
-            order.PlatformFee = CalculatePlatformFee();
-
-            // Calculate SubTotal
-            order.SubTotal = totalAmount; //order.Items.Sum(item => item.TotalPrice);
-
-            order.CreatedAt = DateTime.UtcNow;
-            order.Status = Order.OrderStatus.Pending;
-
-            await _orderRepository.AddAsync(order);
-        }
-
-        //total is calculated based on passed items
-        //public async Task AddOrderAsync(Order order, List<OrderItemCreateDto> orderItems)
+        //public async Task AddOrderAsync(Order order, List<OrderItemCreateDto> orderItems, int totalAmount)
         //{
         //    // Set CustomerId if not already set
         //    if (string.IsNullOrEmpty(order.CustomerId))
         //    {
-        //        order.CustomerId = GetCurrentUserId();
+        //        order.CustomerId = "2";//GetCurrentUserId();
         //    }
 
         //    order.Items ??= new List<OrderItem>();
 
         //    //Validate Restaurant
         //    var restaurant = await _restaurantRepository.GetByIdAsync(order.RestaurantId);
-        //    if (restaurant == null)
+        //    if(restaurant == null)
         //    {
         //        throw new KeyNotFoundException($"Restaurant with ID {order.RestaurantId} not found.");
         //    }
@@ -177,14 +94,14 @@ namespace Services.CategoryService // Adjust namespace as needed
         //            TotalPrice = totalPrice
         //        };
 
-        //        // ✅ Get valid AddOnIds and ComboIds for this item from DB
+        //        // Get valid AddOnIds and ComboIds for this item from DB
         //        var validAddOnIds = await _itemAddOnRepo.FindAsync(ia => ia.ItemId == itemDto.ItemId);
         //        var validComboIds = await _itemComboRepo.FindAsync(ic => ic.ItemId == itemDto.ItemId);
 
         //        var allowedAddOnIds = validAddOnIds.Select(ia => ia.AddOnId).ToHashSet();
         //        var allowedComboIds = validComboIds.Select(ic => ic.ComboId).ToHashSet();
 
-        //        // ✅ Add only valid AddOns
+        //        // Add only valid AddOns
         //        var orderItemAddOns = itemDto.AddOnIds
         //            .Where(addOnId => allowedAddOnIds.Contains(addOnId))
         //            .Select(addOnId => new OrderItemAddOn
@@ -193,7 +110,7 @@ namespace Services.CategoryService // Adjust namespace as needed
         //            })
         //            .ToList();
 
-        //        // ✅ Add only valid Combos
+        //        // Add only valid Combos
         //        var orderItemCombos = itemDto.ComboIds
         //            .Where(comboId => allowedComboIds.Contains(comboId))
         //            .Select(comboId => new OrderItemCombo
@@ -213,13 +130,97 @@ namespace Services.CategoryService // Adjust namespace as needed
         //    order.PlatformFee = CalculatePlatformFee();
 
         //    // Calculate SubTotal
-        //    order.SubTotal = order.Items.Sum(item => item.TotalPrice);
+        //    order.SubTotal = totalAmount; //order.Items.Sum(item => item.TotalPrice);
 
         //    order.CreatedAt = DateTime.UtcNow;
         //    order.Status = Order.OrderStatus.Pending;
 
         //    await _orderRepository.AddAsync(order);
         //}
+
+        //
+        //total is calculated based on passed items
+        public async Task AddOrderAsync(Order order, List<OrderItemCreateDto> orderItems)
+        {
+            // Set CustomerId if not already set
+            if (string.IsNullOrEmpty(order.CustomerId))
+            {
+                order.CustomerId = GetCurrentUserId();
+            }
+
+            order.Items ??= new List<OrderItem>();
+
+            //Validate Restaurant
+            var restaurant = await _restaurantRepository.GetByIdAsync(order.RestaurantId);
+            if (restaurant == null)
+            {
+                throw new KeyNotFoundException($"Restaurant with ID {order.RestaurantId} not found.");
+            }
+
+            foreach (var itemDto in orderItems)
+            {
+                // Validate item
+                var item = await _itemRepository.GetByIdAsync(itemDto.ItemId);
+                if (item == null)
+                    throw new Exception($"Item with ID {itemDto.ItemId} not found.");
+
+                if (itemDto.Quantity <= 0 || itemDto.Quantity > 10000)
+                    throw new Exception($"Quantity for item {itemDto.ItemId} is invalid.");
+
+                var itemPrice = item.Price;
+                var totalPrice = itemPrice * itemDto.Quantity;
+
+                var orderItem = new OrderItem
+                {
+                    ItemId = itemDto.ItemId,
+                    Quantity = itemDto.Quantity,
+                    ItemPrice = itemPrice,
+                    TotalPrice = totalPrice
+                };
+
+                // Get valid AddOnIds and ComboIds for this item from DB
+                var validAddOnIds = await _itemAddOnRepo.FindAsync(ia => ia.ItemId == itemDto.ItemId);
+                var validComboIds = await _itemComboRepo.FindAsync(ic => ic.ItemId == itemDto.ItemId);
+
+                var allowedAddOnIds = validAddOnIds.Select(ia => ia.AddOnId).ToHashSet();
+                var allowedComboIds = validComboIds.Select(ic => ic.ComboId).ToHashSet();
+
+                // Add only valid AddOns
+                var orderItemAddOns = itemDto.AddOnIds
+                    .Where(addOnId => allowedAddOnIds.Contains(addOnId))
+                    .Select(addOnId => new OrderItemAddOn
+                    {
+                        AddOnId = addOnId
+                    })
+                    .ToList();
+
+                // Add only valid Combos
+                var orderItemCombos = itemDto.ComboIds
+                    .Where(comboId => allowedComboIds.Contains(comboId))
+                    .Select(comboId => new OrderItemCombo
+                    {
+                        ComboId = comboId
+                    })
+                    .ToList();
+
+                orderItem.AddOns = orderItemAddOns;
+                orderItem.Combos = orderItemCombos;
+
+                order.Items.Add(orderItem);
+            }
+
+            // Calculate fees and totals
+            order.DeliveryFee = 0;// CalculateDeliveryFee(order.DistanceKm);
+            order.PlatformFee = 0;//CalculatePlatformFee();
+
+            // Calculate SubTotal
+            order.SubTotal = order.Items.Sum(item => item.TotalPrice);
+
+            order.CreatedAt = DateTime.UtcNow;
+            order.Status = Order.OrderStatus.Pending;
+
+            await _orderRepository.AddAsync(order);
+        }
 
 
         public async Task<IEnumerable<OrderResponseDto>> GetAllOrdersAsync()
