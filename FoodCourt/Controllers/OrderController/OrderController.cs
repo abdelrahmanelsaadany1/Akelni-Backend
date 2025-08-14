@@ -226,6 +226,7 @@ namespace Controllers
 
 
         [HttpPost("create-ckeckout-session")]
+        [Authorize(Roles = "Customer")]
         public async  Task<IActionResult> CreateCheckoutSession([FromBody] OrderCreateDto dto)
         {
             int OrderId;
