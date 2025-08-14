@@ -368,9 +368,9 @@ namespace Controllers
                 await _orderService.UpdateOrderStatusAsync(OrderId, status);
                // return Ok(new {status = ((Order.OrderStatus) status).ToString(), url = "http://localhost:4200" });
                 if(status == Order.OrderStatus.Paid)
-                    return Redirect("http://localhost:4200/success");
+                    return Redirect("http://localhost:4200/customer/success");
                 else
-                    return Redirect("http://localhost:4200/error");
+                    return Redirect("http://localhost:4200/customer/error");
 
 
             }
