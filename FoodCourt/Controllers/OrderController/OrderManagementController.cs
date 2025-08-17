@@ -47,6 +47,7 @@ namespace FoodCourt.Controllers.OrderController
                 }
                 await _orderService.UpdateOrderStatusAsync(orderId, Order.OrderStatus.Accepted);
                 await _notificationService.NotifyCustomerOrderAccepted(order.CustomerId, orderId);
+                await _notificationService.NotifyOrderStatusToChef(restaurant.ChefId, orderId, "accepted");
 
                 return Ok(new { message = "Order accepted successfully" });
             }
@@ -80,6 +81,7 @@ namespace FoodCourt.Controllers.OrderController
 
                 await _orderService.UpdateOrderStatusAsync(orderId, Order.OrderStatus.Rejected);
                 await _notificationService.NotifyCustomerOrderRejected(order.CustomerId, orderId, dto.Reason);
+                await _notificationService.NotifyOrderStatusToChef(restaurant.ChefId, orderId, "rejected");
 
                 return Ok(new { message = "Order rejected successfully" });
             }
@@ -88,6 +90,37 @@ namespace FoodCourt.Controllers.OrderController
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        // For Chef Dashboard order component to view all details of the order
+        // C#
+        [HttpGet("chef/current")]
+        [Authorize(Roles = "Chef")]
+        public async Task<IActionResult> GetChefCurrentOrders()
+        {
+            var chefId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            // Get only active orders (Pending/Accepted/InProgress/etc.)
+            var orders = await _orderService.GetCurrentOrdersForChefAsync(chefId);
+            return Ok(orders);
+        }
+
+
+        [HttpGet("orders/{orderId}")]
+        [Authorize(Roles = "Chef")]
+        public async Task<IActionResult> GetOrderDetails(int orderId)
+        {
+            var order = await _orderService.GetOrderByIdAsync(orderId);
+            if (order is null) return NotFound();
+
+            // Validate chef owns the restaurant
+            var chefId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var restaurant = await _restaurantService.GetRestaurantByIdAsync(order.RestaurantId);
+            if (restaurant.ChefId != chefId) return Forbid();
+
+            // Return full details (items, delivery address, totals, customer info, etc.)
+            var details = await _orderService.GetOrderDetailsAsync(orderId);
+            return Ok(details);
+        }
+
     }
     public class RejectOrderDto
     {
