@@ -235,53 +235,64 @@ public class RestaurantsController : ControllerBase
     {
         try
         {
-            //restaurant data include items and category items query on DB
-            var restaurantData = await _dbContext.Restaurants
-                .Where(res => res.Id == id)
-                .Select(r => new {
-                     resName = r.Name,
-                      rating = r.Rating,
-                      resImage = r.ImageUrl,
-                     location = r.Location,
-                      items = r.Items.Select(item => new {
-                               id = item.Id,
-                               name = item.Name,
-                               price = item.Price,
-                               image = item.ImageUrl,
-                               categoryName = item.Category.Name,
-                               categoyId = item.Category.Id
-                           }
-                      ).ToList()
-                
-                             }).FirstOrDefaultAsync();
+            var query = _dbContext.Restaurants
+                .Where(r => r.Id == id)
+                .Select(r => new
+                {
+                    resName = r.Name,
+                    rating = r.Rating,
+                    resImage = r.ImageUrl,
+                    location = r.Location,
 
-            //select distinct categories data from previous result
-            var distinctCategories = restaurantData.items
-              .Select(item => new { item.categoyId, item.categoryName })
-              .Distinct()
-              .ToList();
+                  
+                    categories = r.Items
+                        .Select(i => new { i.Category.Id, i.Category.Name })
+                        .Distinct(),
 
-         
-            var itemsPagination = _genericService.CustomPagination(restaurantData.items, page, pageSize);
-            int totalPages = (int)Math.Ceiling((double)restaurantData.items.Count / pageSize);
-            //now display resutls as you like
+                 
+                    totalItems = r.Items.Count(),
+
+                  
+                    items = r.Items
+                        .OrderBy(i => i.Id) 
+                        .Skip((page - 1) * pageSize)
+                        .Take(pageSize)
+                        .Select(i => new
+                        {
+                            id = i.Id,
+                            name = i.Name,
+                            price = i.Price,
+                            image = i.ImageUrl,
+                            categoryName = i.Category.Name,
+                            categoryId = i.Category.Id
+                        })
+                })
+                .FirstOrDefaultAsync();
+
+            var restaurantData = await query;
+
+            if (restaurantData == null)
+                return NotFound("Restaurant not found");
+
+            int totalPages = (int)Math.Ceiling((double)restaurantData.totalItems / pageSize);
+
             var result = new
             {
-                resName = restaurantData.resName,
-                rating = restaurantData.rating,
-                resImage = restaurantData.resImage,
-                location = restaurantData.location,
-                items = itemsPagination,
-                categories = distinctCategories,
-                totalPages = totalPages
+                restaurantData.resName,
+                restaurantData.rating,
+                restaurantData.resImage,
+                restaurantData.location,
+                items = restaurantData.items,
+                categories = restaurantData.categories,
+                totalPages
             };
-
 
             return Ok(result);
         }
-        catch(Exception e)
+        catch (Exception)
         {
-            return BadRequest($"{e.Message}");
+            return StatusCode(500, "An unexpected error occurred.");
         }
+
     }
 }
