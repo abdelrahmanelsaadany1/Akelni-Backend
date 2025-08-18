@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 using Domain.Contracts;
@@ -16,6 +17,7 @@ using Services.Auth;
 using Services.CategoryService;
 using Services.Services;
 using Sieve.Services;
+using FluentValidation;
 
 namespace FoodCourt
 {
@@ -60,7 +62,7 @@ namespace FoodCourt
             builder.Services.AddScoped<IDbInitializer, DbInitializer>();
             // JWT
             builder.Services.AddScoped<JwtService>();
-            // Email Service
+            // Email Service 
             builder.Services.AddScoped<EmailService>();
             // Location Service
             //builder.Services.AddScoped<ILocationService, LocationService>();
@@ -189,7 +191,7 @@ namespace FoodCourt
                     options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "";
                     options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
                 });
-            //.AddFacebook(options =>
+            //.AddFacebook(options =>9
             //{
 
             //    options.ClientId = builder.Configuration["Authentication:Facebook:AppId"] ?? "";
@@ -221,6 +223,12 @@ namespace FoodCourt
 
             //AutoMapper
             builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
+
+            //reports service 
+            builder.Services.AddScoped<IOrderReportService, OrderReportService>();
+            //validation
+             builder.Services.AddValidatorsFromAssemblies(AppDomain.CurrentDomain.GetAssemblies());
+            //builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
 
             var app = builder.Build();
