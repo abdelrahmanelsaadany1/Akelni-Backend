@@ -230,99 +230,397 @@ namespace Services.CategoryService // Adjust namespace as needed
         }
 
 
+        //public async Task<IEnumerable<OrderResponseDto>> GetAllOrdersAsync()
+        //{
+        //    var orders = await _orderRepository.GetAllAsync(
+        //        include: o => o.Include(x => x.Restaurant)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.Item)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.AddOns)
+        //                                .ThenInclude(a => a.AddOn)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.Combos)
+        //                                .ThenInclude(c => c.Combo)
+        //                        .Include(x => x.Payment)
+        //    );
+        //    return orders.Select(MapToResponseDto);
+        //}
+
+        //public async Task<OrderResponseDto> GetOrderByIdAsync(int id)
+        //{
+        //    var order = await _orderRepository.GetByIdAsync(id,
+        //        include: o => o.Include(x => x.Restaurant)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.Item)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.AddOns)
+        //                                .ThenInclude(a => a.AddOn)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.Combos)
+        //                                .ThenInclude(c => c.Combo)
+        //                        .Include(x => x.Payment)
+        //    );
+        //    if (order == null)
+        //        throw new KeyNotFoundException($"Order with ID {id} not found");
+        //    return MapToResponseDto(order);
+        //}
+
+        //public async Task<IEnumerable<OrderResponseDto>> GetOrdersByCustomerIdAsync(string customerId)
+        //{
+        //    var orders = await _orderRepository.GetAllAsync(
+        //        filter: o => o.CustomerId == customerId,
+        //        include: o => o.Include(x => x.Restaurant)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.Item)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.AddOns)
+        //                                .ThenInclude(a => a.AddOn)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.Combos)
+        //                                .ThenInclude(c => c.Combo)
+        //                        .Include(x => x.Payment),
+        //        orderBy: o => o.OrderByDescending(x => x.CreatedAt)
+        //    );
+        //    return orders.Select(MapToResponseDto);
+        //}
+
+        //public async Task<IEnumerable<OrderResponseDto>> GetOrdersByRestaurantIdAsync(int restaurantId)
+        //{
+        //    var orders = await _orderRepository.GetAllAsync(
+        //        filter: o => o.RestaurantId == restaurantId,
+        //        include: o => o.Include(x => x.Restaurant)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.Item)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.AddOns)
+        //                                .ThenInclude(a => a.AddOn)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.Combos)
+        //                                .ThenInclude(c => c.Combo)
+        //                        .Include(x => x.Payment),
+        //        orderBy: o => o.OrderByDescending(x => x.CreatedAt)
+        //    );
+        //    return orders.Select(MapToResponseDto);
+        //}
+
+        //public async Task<IEnumerable<OrderResponseDto>> GetOrdersByStatusAsync(Order.OrderStatus status)
+        //{
+        //    var orders = await _orderRepository.GetAllAsync(
+        //        filter: o => o.Status == status,
+        //        include: o => o.Include(x => x.Restaurant)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.Item)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.AddOns)
+        //                                .ThenInclude(a => a.AddOn)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.Combos)
+        //                                .ThenInclude(c => c.Combo)
+        //                        .Include(x => x.Payment),
+        //        orderBy: o => o.OrderByDescending(x => x.CreatedAt)
+        //    );
+        //    return orders.Select(MapToResponseDto);
+        //}
         public async Task<IEnumerable<OrderResponseDto>> GetAllOrdersAsync()
         {
-            var orders = await _orderRepository.GetAllAsync(
-                include: o => o.Include(x => x.Restaurant)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.Item)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.AddOns)
-                                        .ThenInclude(a => a.AddOn)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.Combos)
-                                        .ThenInclude(c => c.Combo)
-                                .Include(x => x.Payment)
-            );
-            return orders.Select(MapToResponseDto);
+            var orders = await _context.Orders
+                .Select(o => new OrderResponseDto
+                {
+                    Id = o.Id,
+                    Status = o.Status,
+                    CreatedAt = o.CreatedAt,
+                    SubTotal = o.SubTotal,
+                    DeliveryFee = o.DeliveryFee,
+                    PlatformFee = o.PlatformFee,
+                    DistanceKm = o.DistanceKm,
+                    CustomerId = o.CustomerId,
+                    RestaurantId = o.RestaurantId,
+                    RestaurantName = o.Restaurant.Name,
+                    Items = o.Items.Select(i => new OrderItemResponseDto
+                    {
+                        Id = i.Id,
+                        OrderId = i.OrderId,
+                        ItemId = i.ItemId,
+                        ItemName = i.Item.Name,
+                        ItemPrice = i.Item.Price,
+                        Quantity = i.Quantity,
+                        TotalPrice = i.TotalPrice,
+                        AddOns = i.AddOns.Where(a => a.AddOn != null)
+                            .Select(a => new OrderItemAddOnResponseDto
+                            {
+                                Id = a.Id,
+                                OrderItemId = a.OrderItemId,
+                                AddOnId = a.AddOnId,
+                                AddOnName = a.AddOn.Name,
+                                AddOnPrice = a.AddOn.AdditionalPrice
+                            }).ToList(),
+                        Combos = i.Combos.Where(c => c.Combo != null)
+                            .Select(c => new OrderItemComboResponseDto
+                            {
+                                Id = c.Id,
+                                OrderItemId = c.OrderItemId,
+                                ComboId = c.ComboId,
+                                ComboName = c.Combo.Name,
+                                ComboPrice = c.Combo.ComboPrice
+                            }).ToList()
+                    }).ToList(),
+                    Payment = o.Payment != null ? new PaymentResponseDto
+                    {
+                        Id = o.Payment.Id,
+                        StripePaymentIntentId = o.Payment.StripePaymentIntentId,
+                        Amount = o.Payment.Amount,
+                        PaidAt = o.Payment.PaidAt,
+                        OrderId = o.Payment.OrderId
+                    } : null
+                })
+                .AsNoTracking()
+                .ToListAsync();
+
+            return orders;
         }
 
         public async Task<OrderResponseDto> GetOrderByIdAsync(int id)
         {
-            var order = await _orderRepository.GetByIdAsync(id,
-                include: o => o.Include(x => x.Restaurant)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.Item)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.AddOns)
-                                        .ThenInclude(a => a.AddOn)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.Combos)
-                                        .ThenInclude(c => c.Combo)
-                                .Include(x => x.Payment)
-            );
+            var order = await _context.Orders
+                .Where(o => o.Id == id)
+                .Select(o => new OrderResponseDto
+                {
+                    Id = o.Id,
+                    Status = o.Status,
+                    CreatedAt = o.CreatedAt,
+                    SubTotal = o.SubTotal,
+                    DeliveryFee = o.DeliveryFee,
+                    PlatformFee = o.PlatformFee,
+                    DistanceKm = o.DistanceKm,
+                    CustomerId = o.CustomerId,
+                    RestaurantId = o.RestaurantId,
+                    RestaurantName = o.Restaurant.Name,
+                    Items = o.Items.Select(i => new OrderItemResponseDto
+                    {
+                        Id = i.Id,
+                        OrderId = i.OrderId,
+                        ItemId = i.ItemId,
+                        ItemName = i.Item.Name,
+                        ItemPrice = i.Item.Price,
+                        Quantity = i.Quantity,
+                        TotalPrice = i.TotalPrice,
+                        AddOns = i.AddOns.Where(a => a.AddOn != null)
+                            .Select(a => new OrderItemAddOnResponseDto
+                            {
+                                Id = a.Id,
+                                OrderItemId = a.OrderItemId,
+                                AddOnId = a.AddOnId,
+                                AddOnName = a.AddOn.Name,
+                                AddOnPrice = a.AddOn.AdditionalPrice
+                            }).ToList(),
+                        Combos = i.Combos.Where(c => c.Combo != null)
+                            .Select(c => new OrderItemComboResponseDto
+                            {
+                                Id = c.Id,
+                                OrderItemId = c.OrderItemId,
+                                ComboId = c.ComboId,
+                                ComboName = c.Combo.Name,
+                                ComboPrice = c.Combo.ComboPrice
+                            }).ToList()
+                    }).ToList(),
+                    Payment = o.Payment != null ? new PaymentResponseDto
+                    {
+                        Id = o.Payment.Id,
+                        StripePaymentIntentId = o.Payment.StripePaymentIntentId,
+                        Amount = o.Payment.Amount,
+                        PaidAt = o.Payment.PaidAt,
+                        OrderId = o.Payment.OrderId
+                    } : null
+                })
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+
             if (order == null)
                 throw new KeyNotFoundException($"Order with ID {id} not found");
-            return MapToResponseDto(order);
+
+            return order;
         }
 
         public async Task<IEnumerable<OrderResponseDto>> GetOrdersByCustomerIdAsync(string customerId)
         {
-            var orders = await _orderRepository.GetAllAsync(
-                filter: o => o.CustomerId == customerId,
-                include: o => o.Include(x => x.Restaurant)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.Item)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.AddOns)
-                                        .ThenInclude(a => a.AddOn)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.Combos)
-                                        .ThenInclude(c => c.Combo)
-                                .Include(x => x.Payment),
-                orderBy: o => o.OrderByDescending(x => x.CreatedAt)
-            );
-            return orders.Select(MapToResponseDto);
+            var orders = await _context.Orders
+                .Where(o => o.CustomerId == customerId)
+                .Select(o => new OrderResponseDto
+                {
+                    Id = o.Id,
+                    Status = o.Status,
+                    CreatedAt = o.CreatedAt,
+                    SubTotal = o.SubTotal,
+                    DeliveryFee = o.DeliveryFee,
+                    PlatformFee = o.PlatformFee,
+                    DistanceKm = o.DistanceKm,
+                    CustomerId = o.CustomerId,
+                    RestaurantId = o.RestaurantId,
+                    RestaurantName = o.Restaurant.Name,
+                    Items = o.Items.Select(i => new OrderItemResponseDto
+                    {
+                        Id = i.Id,
+                        OrderId = i.OrderId,
+                        ItemId = i.ItemId,
+                        ItemName = i.Item.Name,
+                        ItemPrice = i.Item.Price,
+                        Quantity = i.Quantity,
+                        TotalPrice = i.TotalPrice,
+                        AddOns = i.AddOns.Where(a => a.AddOn != null)
+                            .Select(a => new OrderItemAddOnResponseDto
+                            {
+                                Id = a.Id,
+                                OrderItemId = a.OrderItemId,
+                                AddOnId = a.AddOnId,
+                                AddOnName = a.AddOn.Name,
+                                AddOnPrice = a.AddOn.AdditionalPrice
+                            }).ToList(),
+                        Combos = i.Combos.Where(c => c.Combo != null)
+                            .Select(c => new OrderItemComboResponseDto
+                            {
+                                Id = c.Id,
+                                OrderItemId = c.OrderItemId,
+                                ComboId = c.ComboId,
+                                ComboName = c.Combo.Name,
+                                ComboPrice = c.Combo.ComboPrice
+                            }).ToList()
+                    }).ToList(),
+                    Payment = o.Payment != null ? new PaymentResponseDto
+                    {
+                        Id = o.Payment.Id,
+                        StripePaymentIntentId = o.Payment.StripePaymentIntentId,
+                        Amount = o.Payment.Amount,
+                        PaidAt = o.Payment.PaidAt,
+                        OrderId = o.Payment.OrderId
+                    } : null
+                })
+                .OrderByDescending(o => o.CreatedAt)
+                .AsNoTracking()
+                .ToListAsync();
+
+            return orders;
         }
 
         public async Task<IEnumerable<OrderResponseDto>> GetOrdersByRestaurantIdAsync(int restaurantId)
         {
-            var orders = await _orderRepository.GetAllAsync(
-                filter: o => o.RestaurantId == restaurantId,
-                include: o => o.Include(x => x.Restaurant)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.Item)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.AddOns)
-                                        .ThenInclude(a => a.AddOn)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.Combos)
-                                        .ThenInclude(c => c.Combo)
-                                .Include(x => x.Payment),
-                orderBy: o => o.OrderByDescending(x => x.CreatedAt)
-            );
-            return orders.Select(MapToResponseDto);
+            var orders = await _context.Orders
+                .Where(o => o.RestaurantId == restaurantId)
+                .Select(o => new OrderResponseDto
+                {
+                    Id = o.Id,
+                    Status = o.Status,
+                    CreatedAt = o.CreatedAt,
+                    SubTotal = o.SubTotal,
+                    DeliveryFee = o.DeliveryFee,
+                    PlatformFee = o.PlatformFee,
+                    DistanceKm = o.DistanceKm,
+                    CustomerId = o.CustomerId,
+                    RestaurantId = o.RestaurantId,
+                    RestaurantName = o.Restaurant.Name,
+                    Items = o.Items.Select(i => new OrderItemResponseDto
+                    {
+                        Id = i.Id,
+                        OrderId = i.OrderId,
+                        ItemId = i.ItemId,
+                        ItemName = i.Item.Name,
+                        ItemPrice = i.Item.Price,
+                        Quantity = i.Quantity,
+                        TotalPrice = i.TotalPrice,
+                        AddOns = i.AddOns.Where(a => a.AddOn != null)
+                            .Select(a => new OrderItemAddOnResponseDto
+                            {
+                                Id = a.Id,
+                                OrderItemId = a.OrderItemId,
+                                AddOnId = a.AddOnId,
+                                AddOnName = a.AddOn.Name,
+                                AddOnPrice = a.AddOn.AdditionalPrice
+                            }).ToList(),
+                        Combos = i.Combos.Where(c => c.Combo != null)
+                            .Select(c => new OrderItemComboResponseDto
+                            {
+                                Id = c.Id,
+                                OrderItemId = c.OrderItemId,
+                                ComboId = c.ComboId,
+                                ComboName = c.Combo.Name,
+                                ComboPrice = c.Combo.ComboPrice
+                            }).ToList()
+                    }).ToList(),
+                    Payment = o.Payment != null ? new PaymentResponseDto
+                    {
+                        Id = o.Payment.Id,
+                        StripePaymentIntentId = o.Payment.StripePaymentIntentId,
+                        Amount = o.Payment.Amount,
+                        PaidAt = o.Payment.PaidAt,
+                        OrderId = o.Payment.OrderId
+                    } : null
+                })
+                .OrderByDescending(o => o.CreatedAt)
+                .AsNoTracking()
+                .ToListAsync();
+
+            return orders;
         }
 
         public async Task<IEnumerable<OrderResponseDto>> GetOrdersByStatusAsync(Order.OrderStatus status)
         {
-            var orders = await _orderRepository.GetAllAsync(
-                filter: o => o.Status == status,
-                include: o => o.Include(x => x.Restaurant)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.Item)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.AddOns)
-                                        .ThenInclude(a => a.AddOn)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.Combos)
-                                        .ThenInclude(c => c.Combo)
-                                .Include(x => x.Payment),
-                orderBy: o => o.OrderByDescending(x => x.CreatedAt)
-            );
-            return orders.Select(MapToResponseDto);
-        }
+            var orders = await _context.Orders
+                .Where(o => o.Status == status)
+                .Select(o => new OrderResponseDto
+                {
+                    Id = o.Id,
+                    Status = o.Status,
+                    CreatedAt = o.CreatedAt,
+                    SubTotal = o.SubTotal,
+                    DeliveryFee = o.DeliveryFee,
+                    PlatformFee = o.PlatformFee,
+                    DistanceKm = o.DistanceKm,
+                    CustomerId = o.CustomerId,
+                    RestaurantId = o.RestaurantId,
+                    RestaurantName = o.Restaurant.Name,
+                    Items = o.Items.Select(i => new OrderItemResponseDto
+                    {
+                        Id = i.Id,
+                        OrderId = i.OrderId,
+                        ItemId = i.ItemId,
+                        ItemName = i.Item.Name,
+                        ItemPrice = i.Item.Price,
+                        Quantity = i.Quantity,
+                        TotalPrice = i.TotalPrice,
+                        AddOns = i.AddOns.Where(a => a.AddOn != null)
+                            .Select(a => new OrderItemAddOnResponseDto
+                            {
+                                Id = a.Id,
+                                OrderItemId = a.OrderItemId,
+                                AddOnId = a.AddOnId,
+                                AddOnName = a.AddOn.Name,
+                                AddOnPrice = a.AddOn.AdditionalPrice
+                            }).ToList(),
+                        Combos = i.Combos.Where(c => c.Combo != null)
+                            .Select(c => new OrderItemComboResponseDto
+                            {
+                                Id = c.Id,
+                                OrderItemId = c.OrderItemId,
+                                ComboId = c.ComboId,
+                                ComboName = c.Combo.Name,
+                                ComboPrice = c.Combo.ComboPrice
+                            }).ToList()
+                    }).ToList(),
+                    Payment = o.Payment != null ? new PaymentResponseDto
+                    {
+                        Id = o.Payment.Id,
+                        StripePaymentIntentId = o.Payment.StripePaymentIntentId,
+                        Amount = o.Payment.Amount,
+                        PaidAt = o.Payment.PaidAt,
+                        OrderId = o.Payment.OrderId
+                    } : null
+                })
+                .OrderByDescending(o => o.CreatedAt)
+                .AsNoTracking()
+                .ToListAsync();
 
+            return orders;
+        }
         public async Task UpdateOrderStatusAsync(int id, Order.OrderStatus status)
         {
             var order = await _orderRepository.GetByIdAsync(id);
@@ -580,25 +878,86 @@ namespace Services.CategoryService // Adjust namespace as needed
         }
 
         // GetOrderDetailsAsync - Using existing repository methods
+        //public async Task<OrderResponseDto> GetOrderDetailsAsync(int orderId)
+        //{
+        //    var order = await _orderRepository.GetByIdAsync(orderId,
+        //        include: o => o.Include(x => x.Restaurant)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.Item)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.AddOns)
+        //                                .ThenInclude(a => a.AddOn)
+        //                        .Include(x => x.Items)
+        //                            .ThenInclude(i => i.Combos)
+        //                                .ThenInclude(c => c.Combo)
+        //                        .Include(x => x.Payment)
+        //    );
+
+        //    if (order == null)
+        //        throw new KeyNotFoundException($"Order with ID {orderId} not found");
+
+        //    return MapToResponseDto(order);
+        //}
         public async Task<OrderResponseDto> GetOrderDetailsAsync(int orderId)
         {
-            var order = await _orderRepository.GetByIdAsync(orderId,
-                include: o => o.Include(x => x.Restaurant)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.Item)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.AddOns)
-                                        .ThenInclude(a => a.AddOn)
-                                .Include(x => x.Items)
-                                    .ThenInclude(i => i.Combos)
-                                        .ThenInclude(c => c.Combo)
-                                .Include(x => x.Payment)
-            );
+            var order = await _context.Orders
+                .Where(o => o.Id == orderId)
+                .Select(o => new OrderResponseDto
+                {
+                    Id = o.Id,
+                    Status = o.Status,
+                    CreatedAt = o.CreatedAt,
+                    SubTotal = o.SubTotal,
+                    DeliveryFee = o.DeliveryFee,
+                    PlatformFee = o.PlatformFee,
+                    DistanceKm = o.DistanceKm,
+                    CustomerId = o.CustomerId,
+                    RestaurantId = o.RestaurantId,
+                    RestaurantName = o.Restaurant.Name,
+                    Items = o.Items.Select(i => new OrderItemResponseDto
+                    {
+                        Id = i.Id,
+                        OrderId = i.OrderId,
+                        ItemId = i.ItemId,
+                        ItemName = i.Item.Name,
+                        ItemPrice = i.Item.Price,
+                        Quantity = i.Quantity,
+                        TotalPrice = i.TotalPrice,
+                        AddOns = i.AddOns.Where(a => a.AddOn != null)
+                            .Select(a => new OrderItemAddOnResponseDto
+                            {
+                                Id = a.Id,
+                                OrderItemId = a.OrderItemId,
+                                AddOnId = a.AddOnId,
+                                AddOnName = a.AddOn.Name,
+                                AddOnPrice = a.AddOn.AdditionalPrice
+                            }).ToList(),
+                        Combos = i.Combos.Where(c => c.Combo != null)
+                            .Select(c => new OrderItemComboResponseDto
+                            {
+                                Id = c.Id,
+                                OrderItemId = c.OrderItemId,
+                                ComboId = c.ComboId,
+                                ComboName = c.Combo.Name,
+                                ComboPrice = c.Combo.ComboPrice
+                            }).ToList()
+                    }).ToList(),
+                    Payment = o.Payment != null ? new PaymentResponseDto
+                    {
+                        Id = o.Payment.Id,
+                        StripePaymentIntentId = o.Payment.StripePaymentIntentId,
+                        Amount = o.Payment.Amount,
+                        PaidAt = o.Payment.PaidAt,
+                        OrderId = o.Payment.OrderId
+                    } : null
+                })
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
 
             if (order == null)
                 throw new KeyNotFoundException($"Order with ID {orderId} not found");
 
-            return MapToResponseDto(order);
+            return order;
         }
     }
 }

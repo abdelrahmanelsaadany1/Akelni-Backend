@@ -268,7 +268,7 @@ namespace FoodCourt
             app.UseStaticFiles();
 
 
-            app.MapGet("/", () => " FoodCourt API — VERSION 1.8");
+            app.MapGet("/", () => " FoodCourt API — VERSION 1.9");
             app.MapControllers();
 
             // Map SignalR hubs
