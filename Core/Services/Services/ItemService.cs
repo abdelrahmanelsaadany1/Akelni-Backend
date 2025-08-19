@@ -621,6 +621,67 @@ public class ItemService : IItemService
         return result;
     }
 
+    // Get Item Details
+    public async Task<ItemClassDto> GetItemDetailsByIdAsync(int id)
+    {
+        if (id <= 0)
+            throw new ArgumentException("Invalid item ID.");
+
+        var item = await _itemRepo.GetByIdWithIncludesAsync(
+            id,
+            includeProperties: "ItemAddOns,ItemAddOns.AddOn,ItemCombos,ItemCombos.Combo,SizePricing"
+        );
+
+        if (item == null)
+            throw new Exception("Item not found");
+
+        // ✅ Get size pricing for the item (fallback in case includes didn't work)
+        var sizePricing = await _itemSizePriceRepo.FindAsync(x => x.ItemId == item.Id);
+
+        return new ItemClassDto
+        {
+            Id = item.Id,
+            Name = item.Name,
+            Description = item.Description,
+            Price = item.Price,
+            SizeType = item.SizeType,
+            Size = item.Size,
+            Weight = item.Weight.HasValue ? (float)item.Weight.Value : null,
+            ImageUrl = item.ImageUrl,
+            CategoryId = item.CategoryId,
+            RestaurantId = item.RestaurantId,
+
+            // ✅ Include size pricing with fallback
+            SizePricing = item.SizePricing?.Any() == true
+                ? item.SizePricing.Select(sp => new ItemSizePriceDto
+                {
+                    Size = sp.Size,
+                    Price = sp.Price
+                }).ToList()
+                : sizePricing.Select(sp => new ItemSizePriceDto
+                {
+                    Size = sp.Size,
+                    Price = sp.Price
+                }).ToList(),
+
+            AddOns = item.ItemAddOns?.Select(ia => new AddOnGetDto
+            {
+                Id = ia.AddOn.Id,
+                Name = ia.AddOn.Name,
+                AdditionalPrice = ia.AdditionalPrice,
+                ImageUrl = ia.ImageUrl
+            }).ToList(),
+
+            Combos = item.ItemCombos?.Select(ic => new ComboGetDto
+            {
+                Id = ic.Combo.Id,
+                Name = ic.Combo.Name,
+                ComboPrice = ic.ComboPrice,
+                ImageUrl = ic.ImageUrl
+            }).ToList()
+        };
+    }
+
     //public async Task UpdateItemAsync(int id, ItemCreateUpdateDto dto)
     //{
     //    ValidateItemDtoAsync(dto);

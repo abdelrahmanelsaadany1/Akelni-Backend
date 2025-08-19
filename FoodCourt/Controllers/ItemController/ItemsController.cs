@@ -158,5 +158,20 @@ namespace FoodCourt.Controllers
                 return NotFound(ex.Message);
             }
         }
+
+        // Get Item details
+        [HttpGet("GetDetails/{id}")]
+        public async Task<IActionResult> GetDetails(int id)
+        {
+            try
+            {
+                var item = await _itemService.GetItemDetailsByIdAsync(id);
+                return Ok(item);
+            }
+            catch (Exception ex)
+            {
+                return NotFound(ex.Message);
+            }
+        }
     }
 }

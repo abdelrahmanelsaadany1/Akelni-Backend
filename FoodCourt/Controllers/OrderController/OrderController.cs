@@ -1,12 +1,13 @@
-﻿using Domain.Dtos.OrderDto;
+﻿using System.Security.Claims;
+using Domain.Dtos.OrderDto;
 using Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Services.Abstractions.ICategoryService;
-using Stripe.Checkout;
+using Services.Abstractions.IServices;
 using Stripe;
-using System.Security.Claims;
+using Stripe.Checkout;
 
 namespace Controllers
 {
@@ -17,12 +18,21 @@ namespace Controllers
     {
         private readonly IOrderService _orderService;
         private readonly StripeSettings _stripeSettings;
-        
+        private readonly IOrderNotificationService _notificationService;
+        private readonly IResturantService _restaurantService;
 
-        public OrdersController(IOptions<StripeSettings> stripeSettings, IOrderService orderService)
+
+        public OrdersController(
+            IOptions<StripeSettings> stripeSettings,
+            IOrderService orderService,
+            IOrderNotificationService notificationService,
+            IResturantService restaurantService
+            )
         {
             _orderService = orderService;
             _stripeSettings = stripeSettings.Value;
+            _notificationService = notificationService;
+            _restaurantService = restaurantService;
         }
 
         //[Authorize("Roles = Admin")]
@@ -251,6 +261,22 @@ namespace Controllers
                 //return Ok(new { message = "Order created successfully", orderId = order.Id });
                 OrderId = order.Id;
                 OrderTotal = (int)order.SubTotal;
+
+                // Get the order details and restaurant info
+                var orderDetails = await _orderService.GetOrderByIdAsync(OrderId);
+                var restaurant = await _restaurantService.GetRestaurantByIdAsync(order.RestaurantId);
+
+                // Send notification to chef for approval
+                await _notificationService.SendOrderRequestToChef(restaurant.ChefId, orderDetails);
+
+                // Return order details instead of immediately creating Stripe session
+                return Ok(new
+                {
+                    message = "Order created successfully. Waiting for chef approval.",
+                    orderId = OrderId,
+                    amount = OrderTotal,
+                    status = "pending_approval"
+                });
             }
             catch (UnauthorizedAccessException ex)
             {
@@ -265,48 +291,116 @@ namespace Controllers
                 return BadRequest(new { message = ex.Message });
             }
 
-            int amount = Convert.ToInt32(OrderTotal); 
+            //int amount = Convert.ToInt32(OrderTotal); 
 
-            //var domain = "http://localhost:4200";
-            var domain = "https://localhost:7045";
-            var currency = "egp";
-            var successUrl = domain + "/api/Orders/success";
-            var cancelUrl = domain + "/api/Orders/cancel";
-            //var successUrl = domain + "/success";
-            //var cancelUrl = domain + "/cancel";
-            StripeConfiguration.ApiKey = _stripeSettings.SecretKey;
+            ////var domain = "http://localhost:4200";
+            //var domain = "https://localhost:7045";
+            //var currency = "egp";
+            //var successUrl = domain + "/api/Orders/success";
+            //var cancelUrl = domain + "/api/Orders/cancel";
+            ////var successUrl = domain + "/success";
+            ////var cancelUrl = domain + "/cancel";
+            //StripeConfiguration.ApiKey = _stripeSettings.SecretKey;
 
-            var options = new SessionCreateOptions
+            //var options = new SessionCreateOptions
+            //{
+            //    PaymentMethodTypes = new List<string> { "card" },
+            //    LineItems = new List<SessionLineItemOptions>
+            //{
+            //    new SessionLineItemOptions
+            //    {
+            //        PriceData = new SessionLineItemPriceDataOptions
+            //        {
+            //            Currency = currency,
+            //            UnitAmount = Convert.ToInt32(amount) * 100,
+            //            ProductData = new SessionLineItemPriceDataProductDataOptions
+            //            {
+            //                Name = "Total Fees",
+            //            }
+            //        },
+            //       Quantity = 1
+            //    },
+            //},
+            //    Metadata = new Dictionary<string, string> {
+            //        { "OrderId",  OrderId.ToString() }
+            //    },
+            //    Mode = "payment",
+            //    SuccessUrl = successUrl + "?session_id={CHECKOUT_SESSION_ID}",
+            //    CancelUrl = cancelUrl,
+            //};
+
+            //var service = new SessionService();
+            //var session = service.Create(options);
+
+            //return Ok(new { url = session.Url, id = session.Id, amount });
+        }
+        // New endpoint for creating Stripe session after chef approval
+        [HttpPost("{orderId}/create-payment-session")]
+        [Authorize(Roles = "Customer")]
+        public async Task<IActionResult> CreatePaymentSession(int orderId)
+        {
+            try
             {
-                PaymentMethodTypes = new List<string> { "card" },
-                LineItems = new List<SessionLineItemOptions>
-            {
-                new SessionLineItemOptions
+                var order = await _orderService.GetOrderByIdAsync(orderId);
+
+                // Verify order belongs to current user
+                var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                if (order.CustomerId != currentUserId)
                 {
-                    PriceData = new SessionLineItemPriceDataOptions
+                    return Forbid("You can only create payment sessions for your own orders.");
+                }
+
+                // Verify order is accepted
+                if (order.Status != Order.OrderStatus.Accepted)
+                {
+                    return BadRequest("Order must be accepted by chef before payment.");
+                }
+
+                int amount = Convert.ToInt32(order.SubTotal);
+
+                var domain = "https://localhost:7045";
+                var currency = "egp";
+                var successUrl = domain + "/api/Orders/success";
+                var cancelUrl = domain + "/api/Orders/cancel";
+
+                StripeConfiguration.ApiKey = _stripeSettings.SecretKey;
+
+                var options = new SessionCreateOptions
+                {
+                    PaymentMethodTypes = new List<string> { "card" },
+                    LineItems = new List<SessionLineItemOptions>
                     {
-                        Currency = currency,
-                        UnitAmount = Convert.ToInt32(amount) * 100,
-                        ProductData = new SessionLineItemPriceDataProductDataOptions
+                        new SessionLineItemOptions
                         {
-                            Name = "Total Fees",
-                        }
+                            PriceData = new SessionLineItemPriceDataOptions
+                            {
+                                Currency = currency,
+                                UnitAmount = Convert.ToInt32(amount) * 100,
+                                ProductData = new SessionLineItemPriceDataProductDataOptions
+                                {
+                                    Name = "Total Fees",
+                                }
+                            },
+                           Quantity = 1
+                        },
                     },
-                   Quantity = 1
-                },
-            },
-                Metadata = new Dictionary<string, string> {
-                    { "OrderId",  OrderId.ToString() }
-                },
-                Mode = "payment",
-                SuccessUrl = successUrl + "?session_id={CHECKOUT_SESSION_ID}",
-                CancelUrl = cancelUrl,
-            };
+                    Metadata = new Dictionary<string, string> {
+                        { "OrderId", orderId.ToString() }
+                    },
+                    Mode = "payment",
+                    SuccessUrl = successUrl + "?session_id={CHECKOUT_SESSION_ID}",
+                    CancelUrl = cancelUrl + "?session_id={CHECKOUT_SESSION_ID}",
+                };
 
-            var service = new SessionService();
-            var session = service.Create(options);
+                var service = new SessionService();
+                var session = service.Create(options);
 
-            return Ok(new { url = session.Url, id = session.Id, amount });
+                return Ok(new { url = session.Url, id = session.Id, amount });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
         }
 
         [HttpGet("success")]
@@ -363,15 +457,31 @@ namespace Controllers
 
             try
             {
+                var order = await _orderService.GetOrderByIdAsync(OrderId);
+                var restaurant = await _restaurantService.GetRestaurantByIdAsync(order.RestaurantId);
                 //since a successful payment is placed into stripe dashboard, change the status to paid
                 //either is cancelled set it to cancelled
                 await _orderService.UpdateOrderStatusAsync(OrderId, status);
+<<<<<<< HEAD
                // return Ok(new {status = ((Order.OrderStatus) status).ToString(), url = "http://localhost:4200" });
                 if(status == Order.OrderStatus.Paid)
                     return Redirect("http://localhost:4200/customer/success");
                 else
                     return Redirect("http://localhost:4200/customer/error");
 
+=======
+                // return Ok(new {status = ((Order.OrderStatus) status).ToString(), url = "http://localhost:4200" });
+                if (status == Order.OrderStatus.Paid)
+                {
+                    await _notificationService.NotifyChefOrderPaid(restaurant.ChefId, OrderId);
+                    return Redirect("http://localhost:4200/success");
+                }
+                else
+                {
+                    await _notificationService.NotifyChefOrderCancelled(restaurant.ChefId, OrderId);
+                    return Redirect("http://localhost:4200/error");
+                }
+>>>>>>> 849266282c3a931a3805bcd0bc581f3b3e39509b
 
             }
             catch (Exception e)

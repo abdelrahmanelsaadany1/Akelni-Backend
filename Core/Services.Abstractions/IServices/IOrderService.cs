@@ -18,5 +18,9 @@ namespace Services.Abstractions.ICategoryService // Adjust namespace as needed
         Task<IEnumerable<OrderResponseDto>> GetCurrentUserOrdersAsync();
         Task<decimal> CalculateOrderTotalAsync(int orderId);
         // Add other order-specific business methods here
+        // GetCurrentOrdersForChefAsync
+        Task<IEnumerable<OrderResponseDto>> GetCurrentOrdersForChefAsync(string chefId);
+        // GetOrderDetailsAsync
+        Task<OrderResponseDto> GetOrderDetailsAsync(int orderId);
     }
 }
