@@ -464,6 +464,12 @@ namespace Controllers
                 await _orderService.UpdateOrderStatusAsync(OrderId, status);
 
                 // If payment successful, create payment record
+               // return Ok(new {status = ((Order.OrderStatus) status).ToString(), url = "http://localhost:4200" });
+                if(status == Order.OrderStatus.Paid)
+                    return Redirect("http://localhost:4200/customer/success");
+                else
+                    return Redirect("http://localhost:4200/customer/error");
+
                 if (status == Order.OrderStatus.Paid)
                 {
                     await _orderService.CreatePaymentAsync(OrderId, new Payment
