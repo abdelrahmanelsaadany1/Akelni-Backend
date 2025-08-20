@@ -20,11 +20,12 @@ namespace Services.Services
         }
         public async Task SendOrderRequestToChef(string chefId, OrderResponseDto order)
         {
+            string customerName = "Customer";
             await _hubContext.Clients.Group($"Chef_{chefId}").SendAsync("ReceiveOrderRequest", new
             {
                 orderId = order.Id,
-                customerName = order.CustomerId ?? "Customer",
-                items = order.Items,            // keep as array; client can use items?.length
+                customerName = order.CustomerName ?? "Customer",
+                items = order.Items,
                 totalAmount = order.SubTotal,
                 createdAt = order.CreatedAt,
                 restaurantName = order.RestaurantName

@@ -22,5 +22,7 @@ namespace Services.Abstractions.ICategoryService // Adjust namespace as needed
         Task<IEnumerable<OrderResponseDto>> GetCurrentOrdersForChefAsync(string chefId);
         // GetOrderDetailsAsync
         Task<OrderResponseDto> GetOrderDetailsAsync(int orderId);
+        Task CreatePaymentAsync(int orderId, Payment payment);
+
     }
 }

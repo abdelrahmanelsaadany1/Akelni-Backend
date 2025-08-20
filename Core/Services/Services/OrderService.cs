@@ -959,5 +959,20 @@ namespace Services.CategoryService // Adjust namespace as needed
 
             return order;
         }
+
+        public async Task CreatePaymentAsync(int orderId, Payment payment)
+        {
+            // Verify order exists
+            var order = await _orderRepository.GetByIdAsync(orderId);
+            if (order == null)
+                throw new KeyNotFoundException($"Order with ID {orderId} not found");
+
+            // Set the OrderId (though it should already be set)
+            payment.OrderId = orderId;
+
+            // Add payment to context
+            await _context.Payments.AddAsync(payment);
+            await _context.SaveChangesAsync();
+        }
     }
 }

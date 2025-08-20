@@ -18,6 +18,7 @@ namespace Domain.Dtos.OrderDto
         public decimal TotalAmount => SubTotal + DeliveryFee + PlatformFee;
         public double DistanceKm { get; set; }
         public string CustomerId { get; set; }
+        public string? CustomerName { get; set; }
         public int RestaurantId { get; set; }
         public string? RestaurantName { get; set; }
         public List<OrderItemResponseDto> Items { get; set; } = new List<OrderItemResponseDto>();

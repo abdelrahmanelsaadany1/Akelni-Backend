@@ -459,12 +459,21 @@ namespace Controllers
             {
                 var order = await _orderService.GetOrderByIdAsync(OrderId);
                 var restaurant = await _restaurantService.GetRestaurantByIdAsync(order.RestaurantId);
-                //since a successful payment is placed into stripe dashboard, change the status to paid
-                //either is cancelled set it to cancelled
+
+                // Update order status
                 await _orderService.UpdateOrderStatusAsync(OrderId, status);
-                // return Ok(new {status = ((Order.OrderStatus) status).ToString(), url = "http://localhost:4200" });
+
+                // If payment successful, create payment record
                 if (status == Order.OrderStatus.Paid)
                 {
+                    await _orderService.CreatePaymentAsync(OrderId, new Payment
+                    {
+                        StripePaymentIntentId = session.PaymentIntentId ?? session.Id,
+                        Amount = order.SubTotal,
+                        PaidAt = DateTime.UtcNow,
+                        OrderId = OrderId
+                    });
+
                     await _notificationService.NotifyChefOrderPaid(restaurant.ChefId, OrderId);
                     return Redirect("http://localhost:4200/success");
                 }
@@ -473,7 +482,6 @@ namespace Controllers
                     await _notificationService.NotifyChefOrderCancelled(restaurant.ChefId, OrderId);
                     return Redirect("http://localhost:4200/error");
                 }
-
             }
             catch (Exception e)
             {
