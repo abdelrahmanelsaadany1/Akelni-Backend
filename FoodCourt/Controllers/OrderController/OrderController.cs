@@ -445,48 +445,42 @@ namespace Controllers
             if (string.IsNullOrEmpty(session_id))
                 return BadRequest("No session ID provided");
 
-            SessionService service = new SessionService();
+            var service = new SessionService();
             var session = await service.GetAsync(session_id);
 
-            int OrderId = int.Parse(session.Metadata["OrderId"]);
-
-            if (OrderId <= 0)
-            {
-                return BadRequest();
-            }
+            if (!session.Metadata.TryGetValue("OrderId", out var orderIdStr) || !int.TryParse(orderIdStr, out int orderId) || orderId <= 0)
+                return BadRequest("Invalid Order ID");
 
             try
             {
-                var order = await _orderService.GetOrderByIdAsync(OrderId);
+                var order = await _orderService.GetOrderByIdAsync(orderId);
                 var restaurant = await _restaurantService.GetRestaurantByIdAsync(order.RestaurantId);
 
                 // Update order status
-                await _orderService.UpdateOrderStatusAsync(OrderId, status);
-
-                // If payment successful, create payment record
-               // return Ok(new {status = ((Order.OrderStatus) status).ToString(), url = "http://localhost:4200" });
-                if(status == Order.OrderStatus.Paid)
-                    return Redirect("http://localhost:4200/customer/success");
-                else
-                    return Redirect("http://localhost:4200/customer/error");
+                await _orderService.UpdateOrderStatusAsync(orderId, status);
 
                 if (status == Order.OrderStatus.Paid)
                 {
-                    await _orderService.CreatePaymentAsync(OrderId, new Payment
+                    // Record payment
+                    await _orderService.CreatePaymentAsync(orderId, new Payment
                     {
                         StripePaymentIntentId = session.PaymentIntentId ?? session.Id,
                         Amount = order.SubTotal,
                         PaidAt = DateTime.UtcNow,
-                        OrderId = OrderId
+                        OrderId = orderId
                     });
 
-                    await _notificationService.NotifyChefOrderPaid(restaurant.ChefId, OrderId);
-                    return Redirect("http://localhost:4200/success");
+                    // Notify chef
+                    await _notificationService.NotifyChefOrderPaid(restaurant.ChefId, orderId);
+
+                    return Redirect("http://localhost:4200/customer/success");
                 }
                 else
                 {
-                    await _notificationService.NotifyChefOrderCancelled(restaurant.ChefId, OrderId);
-                    return Redirect("http://localhost:4200/error");
+                    // Notify chef
+                    await _notificationService.NotifyChefOrderCancelled(restaurant.ChefId, orderId);
+
+                    return Redirect("http://localhost:4200/customer/error");
                 }
             }
             catch (Exception e)
@@ -494,5 +488,6 @@ namespace Controllers
                 return NotFound(new { msg = e.Message });
             }
         }
+
     }
 }
