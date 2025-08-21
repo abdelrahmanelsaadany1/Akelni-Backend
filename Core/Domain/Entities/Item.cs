@@ -1,4 +1,5 @@
-﻿using Sieve.Attributes;
+﻿using Microsoft.EntityFrameworkCore;
+using Sieve.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +15,8 @@ namespace Domain.Entities
         Weighted
     }
 
+    [Index(nameof(RestaurantId), nameof(Id))]
+    [Index(nameof(CategoryId))]
     public class Item:BaseEntity
     {
        

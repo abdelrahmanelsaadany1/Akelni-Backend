@@ -249,12 +249,17 @@ public class RestaurantsController : ControllerBase
             if (restaurant == null)
                 return NotFound("Restaurant not found");
 
-            // Get categories separately (lighter query)
-            var categories = await _dbContext.Items
-                .Where(i => i.RestaurantId == id)
-                .Select(i => new { i.Category.Id, i.Category.Name })
-                .Distinct()
+            //// Get categories separately (lighter query)
+            //var categories = await _dbContext.Items
+            //    .Where(i => i.RestaurantId == id)
+            //    .Select(i => new { i.Category.Id, i.Category.Name })
+            //    .Distinct()
+            //    .ToListAsync();
+            var categories = await _dbContext.Categories
+                .Where(c => c.Items.Any(i => i.RestaurantId == id))
+                .Select(c => new { c.Id, c.Name })
                 .ToListAsync();
+
 
             // Count items separately (fast aggregate query)
             var totalItems = await _dbContext.Items
