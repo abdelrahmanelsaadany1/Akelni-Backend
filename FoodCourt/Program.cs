@@ -5,6 +5,7 @@ using Domain.Contracts;
 using Domain.Contracts.Item;
 using Domain.Entities;
 using Domain.Entities.Identity;
+using Domain.Hubs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -32,10 +33,13 @@ namespace FoodCourt
             // Add services to the container.
             builder.Services.AddControllers();
 
+            // Add SignalR
+            builder.Services.AddSignalR();
+
             //Stripe Settings.
             builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("StripeSettings"));
-            
-            
+
+
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
@@ -69,6 +73,9 @@ namespace FoodCourt
             //builder.Services.AddHttpClient<LocationService>();
             //builder.Services.AddMemoryCache();
 
+            // Order Notification Service
+            builder.Services.AddScoped<IOrderNotificationService, OrderNotificationService>();
+
             builder.Services.AddScoped<IResturantService, ResturantService>();
             builder.Services.AddScoped<IOrderService, OrderService>();
             builder.Services.AddScoped<IItemService, ItemService>();
@@ -77,7 +84,7 @@ namespace FoodCourt
             builder.Services.AddScoped<IAddOnService, AddOnService>();
             builder.Services.AddScoped<IComboService, ComboService>();
             builder.Services.AddScoped(typeof(IItemRepository<>), typeof(ItemRepository<>));
-       
+
 
 
 
@@ -153,6 +160,17 @@ namespace FoodCourt
 
     options.Events = new JwtBearerEvents
     {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/orderHub"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        },
         OnAuthenticationFailed = context =>
         {
             Console.WriteLine("❌ JWT Auth failed: " + context.Exception.Message);
@@ -258,8 +276,11 @@ namespace FoodCourt
             app.UseStaticFiles();
 
 
-            app.MapGet("/", () => " FoodCourt API — VERSION 1.7 ");
+            app.MapGet("/", () => " FoodCourt API — VERSION 2.0");
             app.MapControllers();
+
+            // Map SignalR hubs
+            app.MapHub<OrderHub>("/orderHub");
 
             app.Run();
         }

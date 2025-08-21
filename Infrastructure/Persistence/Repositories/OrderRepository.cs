@@ -88,4 +88,43 @@ public class OrderRepository<TEntity> : IExtendedRepository<TEntity> where TEnti
         throw new NotImplementedException();
     }
 
+    // GetCurrentOrdersForChefAsync - Fixed to work with Order entity specifically
+    public async Task<IEnumerable<TEntity>> GetCurrentOrdersForChefAsync(int chefId)
+    {
+        // Cast to Order type since this method is specific to orders
+        if (typeof(TEntity) == typeof(Order))
+        {
+            var orders = await _context.Orders
+                .Include(o => o.Restaurant)
+                .Where(o => o.Restaurant.ChefId == chefId.ToString() &&
+                           (o.Status == Order.OrderStatus.Accepted ||
+                            o.Status == Order.OrderStatus.Paid ||
+                            o.Status == Order.OrderStatus.InTransit))
+                .ToListAsync();
+
+            return orders.Cast<TEntity>();
+        }
+
+        throw new InvalidOperationException($"GetCurrentOrdersForChefAsync is only supported for Order entities, not {typeof(TEntity).Name}");
+    }
+
+    // GetOrderDetailsAsync - Fixed to use correct property name
+    public async Task<TEntity> GetOrderDetailsAsync(int orderId)
+    {
+        if (typeof(TEntity) == typeof(Order))
+        {
+            var order = await _context.Orders
+                .Include(o => o.Items)
+                .ThenInclude(oi => oi.Item)
+                .Include(o => o.Restaurant)
+                .Include(o => o.Payment)
+                .FirstOrDefaultAsync(o => o.Id == orderId);
+
+            return order as TEntity;
+        }
+
+        return await _context.Set<TEntity>()
+            .FirstOrDefaultAsync(e => e.Id == orderId);
+    }
+
 }

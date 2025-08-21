@@ -20,5 +20,8 @@ namespace Services.Abstractions.IServices
         // Get items by restaurant ID and category ID
         Task<IEnumerable<ItemClassDto>> GetItemsByRestaurantIdAndCategoryIdAsync(int restaurantId, int categoryId);
         Task<IEnumerable<ItemClassDto>> GetAllItemsByRestaurantIdAsync(int restaurantId);
+
+        // Get Items details
+        Task<ItemClassDto> GetItemDetailsByIdAsync(int id);
     }
 }
