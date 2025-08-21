@@ -10,6 +10,7 @@ using Services.Abstractions.ICategoryService;
 using Services.Abstractions.IServices;
 using System.Linq;
 using System.Security.Claims;
+using static System.Net.Mime.MediaTypeNames;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -293,6 +294,39 @@ public class RestaurantsController : ControllerBase
         catch (Exception)
         {
             return StatusCode(500, "An unexpected error occurred.");
+        }
+    }
+
+    
+    [HttpGet("restCatItems/{id}")]
+    public async Task<IActionResult> getRestCatItems(int id, [FromQuery] int catId, [FromQuery] int page = 1, [FromQuery] int pageSize = 4)
+    {
+        try
+        {
+            var items = await _dbContext.Items
+                        .Where(i => i.RestaurantId == id && i.CategoryId == catId)
+                         .Skip((page - 1) * pageSize)
+                         .Take(pageSize)
+                        .Select(i => new
+                        {
+                            Id = i.Id,
+                            Name = i.Name,
+                            Price = i.Price,
+                            image = i.ImageUrl
+                        }).ToListAsync();
+            int totalPages = (int)Math.Ceiling((double)items.Count() / pageSize);
+
+            return Ok(new
+             {
+                items,
+                page,
+                pageSize,
+                totalPages,
+            });
+                   
+        }
+        catch (Exception ex) { 
+           return BadRequest(ex.Message);
         }
     }
 
