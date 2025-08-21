@@ -231,68 +231,69 @@ public class RestaurantsController : ControllerBase
     }
 
     [HttpGet("customer-restaurant/{id}")]
-    public async Task<IActionResult> GetCustomerRestaurant(int id, [FromQuery] int page = 1 , [FromQuery] int pageSize = 4)
+    public async Task<IActionResult> GetCustomerRestaurant(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 4)
     {
         try
         {
-            var query = _dbContext.Restaurants
+            var restaurant = await _dbContext.Restaurants
                 .Where(r => r.Id == id)
                 .Select(r => new
                 {
                     resName = r.Name,
                     rating = r.Rating,
                     resImage = r.ImageUrl,
-                    location = r.Location,
-
-                  
-                    categories = r.Items
-                        .Select(i => new { i.Category.Id, i.Category.Name })
-                        .Distinct(),
-
-                 
-                    totalItems = r.Items.Count(),
-
-                  
-                    items = r.Items
-                        .OrderBy(i => i.Id) 
-                        .Skip((page - 1) * pageSize)
-                        .Take(pageSize)
-                        .Select(i => new
-                        {
-                            id = i.Id,
-                            name = i.Name,
-                            price = i.Price,
-                            image = i.ImageUrl,
-                            categoryName = i.Category.Name,
-                            categoryId = i.Category.Id
-                        })
+                    location = r.Location
                 })
                 .FirstOrDefaultAsync();
 
-            var restaurantData = await query;
-
-            if (restaurantData == null)
+            if (restaurant == null)
                 return NotFound("Restaurant not found");
 
-            int totalPages = (int)Math.Ceiling((double)restaurantData.totalItems / pageSize);
+            // Get categories separately (lighter query)
+            var categories = await _dbContext.Items
+                .Where(i => i.RestaurantId == id)
+                .Select(i => new { i.Category.Id, i.Category.Name })
+                .Distinct()
+                .ToListAsync();
 
-            var result = new
+            // Count items separately (fast aggregate query)
+            var totalItems = await _dbContext.Items
+                .Where(i => i.RestaurantId == id)
+                .CountAsync();
+
+            var items = await _dbContext.Items
+                .Where(i => i.RestaurantId == id)
+                .OrderBy(i => i.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(i => new
+                {
+                    i.Id,
+                    i.Name,
+                    i.Price,
+                    image = i.ImageUrl,
+                    categoryName = i.Category.Name,
+                    categoryId = i.Category.Id
+                })
+                .ToListAsync();
+
+            int totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
+
+            return Ok(new
             {
-                restaurantData.resName,
-                restaurantData.rating,
-                restaurantData.resImage,
-                restaurantData.location,
-                items = restaurantData.items,
-                categories = restaurantData.categories,
+                restaurant.resName,
+                restaurant.rating,
+                restaurant.resImage,
+                restaurant.location,
+                categories,
+                items,
                 totalPages
-            };
-
-            return Ok(result);
+            });
         }
         catch (Exception)
         {
             return StatusCode(500, "An unexpected error occurred.");
         }
-
     }
+
 }
