@@ -110,44 +110,6 @@ namespace FoodCourt
             // OrderService registration (this is missing from your Program.cs)
             builder.Services.AddScoped<IOrderService, OrderService>();
             builder.Services.AddHttpContextAccessor();
-            // Authentication
-            //builder.Services.AddAuthentication(opt =>
-            //{
-            //    opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-            //    opt.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            //})
-            //    .AddJwtBearer(options =>
-            //    {
-            //        options.TokenValidationParameters = new TokenValidationParameters
-            //        {
-            //            ValidateIssuer = true,
-            //            //ValidateAudience = true,
-            //            ValidateAudience = false,
-            //            ValidateLifetime = true,
-            //            ValidateIssuerSigningKey = true,
-            //            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            //            ValidAudience = builder.Configuration["Jwt:Audience"],
-            //            IssuerSigningKey = new SymmetricSecurityKey(
-            //                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"])),
-            //            RoleClaimType = ClaimTypes.Role,
-            //            NameClaimType = ClaimTypes.NameIdentifier
-
-            //        };
-
-            //        options.Events = new JwtBearerEvents
-            //        {
-            //            OnAuthenticationFailed = context =>
-            //            {
-            //                Console.WriteLine("JWT Auth failed: " + context.Exception.Message);
-            //                return Task.CompletedTask;
-            //            },
-            //            OnTokenValidated = context =>
-            //            {
-            //                Console.WriteLine("JWT token validated for: " + context.Principal.Identity.Name);
-            //                return Task.CompletedTask;
-            //            }
-            //        };
-            //    });
 
             builder.Services.AddAuthentication(options =>
             {
@@ -210,45 +172,14 @@ namespace FoodCourt
     };
 });
 
-
-            //.AddJwtBearer(opt =>
-            //{
-            //    opt.TokenValidationParameters = new TokenValidationParameters
-            //    {
-            //        ValidateIssuer = true,
-            //        ValidateAudience = true,
-            //        ValidateLifetime = true,
-            //        ValidateIssuerSigningKey = true,
-            //        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            //        ValidAudience = builder.Configuration["Jwt:Audience"],
-            //        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key not found in configuration")))
-            //    };
-            //});
-
-            //builder.Services.AddScoped<FacebookAuthService>();
-
-
-            // Facebook and google
+            // Google
             builder.Services.AddAuthentication()
                 .AddGoogle(options =>
                 {
                     options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "";
                     options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
                 });
-            //.AddFacebook(options =>9
-            //{
 
-            //    options.ClientId = builder.Configuration["Authentication:Facebook:AppId"] ?? "";
-            //    options.ClientSecret = builder.Configuration["Authentication:Facebook:AppSecret"] ?? "";
-            //    options.Fields.Add("name");
-            //});
-            //.AddFacebook(options =>
-            //{
-            //    options.AppId = builder.Configuration["Authentication:Facebook:AppId"] ?? "";
-            //    options.AppSecret = builder.Configuration["Authentication:Facebook:AppSecret"] ?? "";
-            //    options.Scope.Add("email");
-            //    options.Fields.Add("email");
-            //});
             // Allow CORS --2
             builder.Services.AddCors(opt =>
             {
@@ -273,8 +204,7 @@ namespace FoodCourt
             //reports service 
             builder.Services.AddScoped<IOrderReportService, OrderReportService>();
             //validation
-             builder.Services.AddValidatorsFromAssemblies(AppDomain.CurrentDomain.GetAssemblies());
-            //builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+            builder.Services.AddValidatorsFromAssemblies(AppDomain.CurrentDomain.GetAssemblies());
 
             // Add this after other service registrations
             builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("Cloudinary"));
@@ -301,6 +231,7 @@ namespace FoodCourt
 
             app.UseSwaggerUI();
 
+
             // Allow CORS -- 3 (moved before authentication)
             app.UseCors(corsPolicyName);
 
@@ -311,7 +242,7 @@ namespace FoodCourt
             app.UseStaticFiles();
 
 
-            app.MapGet("/", () => " FoodCourt API — VERSION 2.0");
+            app.MapGet("/", () => " FoodCourt API — VERSION 2.1");
             app.MapControllers();
 
             // Map SignalR hubs
