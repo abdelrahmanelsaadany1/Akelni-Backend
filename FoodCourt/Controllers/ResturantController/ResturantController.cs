@@ -297,37 +297,68 @@ public class RestaurantsController : ControllerBase
         }
     }
 
-    
+
     [HttpGet("restCatItems/{id}")]
-    public async Task<IActionResult> getRestCatItems(int id, [FromQuery] int catId, [FromQuery] int page = 1, [FromQuery] int pageSize = 4)
+    public async Task<IActionResult> GetRestCatItems(
+    int id,
+    [FromQuery] int catId,
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 4)
     {
         try
         {
+            if (page <= 0) page = 1;
+            if (pageSize <= 0) pageSize = 4;
+
+            // 1) Get total count (fast aggregate query)
+            var totalCount = await _dbContext.Items
+                .Where(i => i.RestaurantId == id && i.CategoryId == catId)
+                .CountAsync();
+
+            if (totalCount == 0)
+            {
+                return Ok(new
+                {
+                    items = new List<object>(),
+                    page,
+                    pageSize,
+                    totalPages = 0
+                });
+            }
+
+            // 2) Get only the requested page of items
             var items = await _dbContext.Items
-                        .Where(i => i.RestaurantId == id && i.CategoryId == catId)
-                         .Skip((page - 1) * pageSize)
-                         .Take(pageSize)
-                        .Select(i => new
-                        {
-                            Id = i.Id,
-                            Name = i.Name,
-                            Price = i.Price,
-                            image = i.ImageUrl
-                        }).ToListAsync();
-            int totalPages = (int)Math.Ceiling((double)items.Count() / pageSize);
+                .Where(i => i.RestaurantId == id && i.CategoryId == catId)
+                .OrderBy(i => i.Id) // ensure stable ordering for paging
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(i => new
+                {
+                    Id = i.Id,
+                    Name = i.Name,
+                    Price = i.Price,
+                    Image = i.ImageUrl
+                })
+                .ToListAsync();
+
+            // 3) Calculate total pages
+            int totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
             return Ok(new
-             {
+            {
                 items,
                 page,
                 pageSize,
-                totalPages,
+                totalPages
             });
-                   
         }
-        catch (Exception ex) { 
-           return BadRequest(ex.Message);
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 
 }
+
+
+
