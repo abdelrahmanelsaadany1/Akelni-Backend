@@ -1,6 +1,8 @@
 ﻿using System.Data;
 using System.Security.Claims;
 using System.Text.Json;
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
 using Domain.Dtos.Auth;
 using Domain.Entities.Identity;
 using Google.Apis.Auth;
@@ -24,6 +26,7 @@ namespace FoodCourt.Controllers.Account
         private readonly EmailService _emailService;
         private readonly ILocationService _locationService;
         private readonly IConfiguration _configuration;
+        private readonly Cloudinary _cloudinary;
         //private readonly FacebookAuthService _facebookAuthService;
 
         public AuthController(UserManager<User> userManager,
@@ -32,7 +35,8 @@ namespace FoodCourt.Controllers.Account
                               EmailService emailService,
                               //ILocationService locationService,
                               //FacebookAuthService facebookAuthService,
-                              IConfiguration configuration)
+                              IConfiguration configuration,
+                              Cloudinary cloudinary)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -41,6 +45,7 @@ namespace FoodCourt.Controllers.Account
             //_facebookAuthService = facebookAuthService;
             _configuration = configuration;
             //_locationService = locationService;
+            _cloudinary = cloudinary;
         }
 
 
@@ -203,28 +208,36 @@ namespace FoodCourt.Controllers.Account
 
         private async Task<string> SaveImageFromBase64(string base64Data, string userId)
         {
-            // Remove data:image/jpeg;base64, prefix if present
-            var base64String = base64Data.Contains(",") ? base64Data.Split(',')[1] : base64Data;
+            try
+            {
+                var base64String = base64Data.Contains(",") ? base64Data.Split(',')[1] : base64Data;
+                var imageBytes = Convert.FromBase64String(base64String);
 
-            // Convert base64 to byte array
-            var imageBytes = Convert.FromBase64String(base64String);
+                // Generate unique filename
+                var fileName = $"profile_{userId}_{Guid.NewGuid()}";
 
-            // Generate unique filename
-            var fileName = $"profile_{userId}_{Guid.NewGuid()}.jpg";
+                var uploadParams = new ImageUploadParams()
+                {
+                    File = new FileDescription(fileName, new MemoryStream(imageBytes)),
+                    Folder = "profile-images",
+                    PublicId = fileName,
+                    Transformation = new Transformation().Width(300).Height(300).Crop("fill")
+                };
 
-            // Define upload path (adjust to your needs)
-            var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profiles");
+                var uploadResult = await _cloudinary.UploadAsync(uploadParams);
 
-            // Create directory if it doesn't exist
-            if (!Directory.Exists(uploadsFolder))
-                Directory.CreateDirectory(uploadsFolder);
+                if (uploadResult.Error != null)
+                {
+                    throw new Exception($"Cloudinary upload failed: {uploadResult.Error.Message}");
+                }
 
-            var filePath = Path.Combine(uploadsFolder, fileName);
-
-            // Save file
-            await System.IO.File.WriteAllBytesAsync(filePath, imageBytes);
-            // Return the URL path
-            return $"/uploads/profiles/{fileName}";
+                return uploadResult.SecureUrl.ToString();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Image upload error: {ex.Message}");
+                throw new Exception("Failed to upload image", ex);
+            }
         }
 
 

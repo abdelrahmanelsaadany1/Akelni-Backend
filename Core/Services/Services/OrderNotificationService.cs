@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Domain.Dtos.OrderDto;
 using Domain.Entities;
-using Domain.Hubs;
+using FoodCourt.Hubs;
 using Microsoft.AspNetCore.SignalR;
 using Services.Abstractions.IServices;
 

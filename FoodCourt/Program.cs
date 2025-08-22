@@ -1,14 +1,17 @@
 using System.Reflection;
 using System.Security.Claims;
 using System.Text;
+using CloudinaryDotNet;
 using Domain.Contracts;
 using Domain.Contracts.Item;
 using Domain.Entities;
 using Domain.Entities.Identity;
-using Domain.Hubs;
+using FluentValidation;
+using FoodCourt.settingFileRemote;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Persistence.Data;
 using Persistence.Mappers;
@@ -18,7 +21,7 @@ using Services.Auth;
 using Services.CategoryService;
 using Services.Services;
 using Sieve.Services;
-using FluentValidation;
+using FoodCourt.Hubs;
 
 namespace FoodCourt
 {
@@ -33,8 +36,19 @@ namespace FoodCourt
             // Add services to the container.
             builder.Services.AddControllers();
 
-            // Add SignalR
-            builder.Services.AddSignalR();
+            // Add SignalR with specific configuration
+            builder.Services.AddSignalR(options =>
+            {
+                options.EnableDetailedErrors = true;
+                options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+                options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+                options.HandshakeTimeout = TimeSpan.FromSeconds(15);
+                options.MaximumReceiveMessageSize = 32 * 1024; // 32KB
+            })
+            .AddJsonProtocol(options =>
+            {
+                options.PayloadSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+            });
 
             //Stripe Settings.
             builder.Services.Configure<StripeSettings>(builder.Configuration.GetSection("StripeSettings"));
@@ -155,7 +169,8 @@ namespace FoodCourt
 
         // ✅ Set these exactly (do NOT use ClaimTypes.Role)
         RoleClaimType = ClaimTypes.Role,
-        NameClaimType = ClaimTypes.NameIdentifier
+        NameClaimType = ClaimTypes.NameIdentifier,
+        ClockSkew = TimeSpan.Zero
     };
 
     options.Events = new JwtBearerEvents
@@ -169,16 +184,27 @@ namespace FoodCourt
             {
                 context.Token = accessToken;
             }
+            else if (path.StartsWithSegments("/orderHub"))
+            {
+                // Try to get token from Authorization header
+                var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+                {
+                    context.Token = authHeader.Substring("Bearer ".Length).Trim();
+                }
+            }
             return Task.CompletedTask;
         },
         OnAuthenticationFailed = context =>
         {
-            Console.WriteLine("❌ JWT Auth failed: " + context.Exception.Message);
+            Console.WriteLine($"❌ JWT Auth failed: {context.Exception.Message}");
+            Console.WriteLine($"❌ Path: {context.Request.Path}");
+            Console.WriteLine($"❌ Token: {context.Request.Query["access_token"]}");
             return Task.CompletedTask;
         },
         OnTokenValidated = context =>
         {
-            Console.WriteLine("✅ JWT token validated for: " + context.Principal.Identity?.Name);
+            Console.WriteLine($"✅ JWT token validated for: {context.Principal.Identity?.Name}");
             return Task.CompletedTask;
         }
     };
@@ -232,7 +258,9 @@ namespace FoodCourt
                         policy.WithOrigins("http://localhost:4200", "https://akelny-front.vercel.app")
                         .AllowAnyHeader()
                         .AllowAnyMethod()
-                        .AllowCredentials();
+                        .AllowCredentials()
+                        .SetIsOriginAllowedToAllowWildcardSubdomains()
+                        .WithExposedHeaders("*");
                     });
             });
 
@@ -248,6 +276,13 @@ namespace FoodCourt
              builder.Services.AddValidatorsFromAssemblies(AppDomain.CurrentDomain.GetAssemblies());
             //builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 
+            // Add this after other service registrations
+            builder.Services.Configure<CloudinarySettings>(builder.Configuration.GetSection("Cloudinary"));
+            builder.Services.AddSingleton<Cloudinary>(provider =>
+            {
+                var config = provider.GetService<IOptions<CloudinarySettings>>().Value;
+                return new Cloudinary(new Account(config.CloudName, config.ApiKey, config.ApiSecret));
+            });
 
             var app = builder.Build();
 
