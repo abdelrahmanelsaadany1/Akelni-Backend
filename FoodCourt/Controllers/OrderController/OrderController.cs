@@ -13,61 +13,28 @@ namespace Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    //[Authorize] // Require authentication for all order operations
     public class OrdersController : ControllerBase
     {
         private readonly IOrderService _orderService;
         private readonly StripeSettings _stripeSettings;
         private readonly IOrderNotificationService _notificationService;
         private readonly IResturantService _restaurantService;
-
+        private readonly IConfiguration _configuration;
 
         public OrdersController(
             IOptions<StripeSettings> stripeSettings,
             IOrderService orderService,
             IOrderNotificationService notificationService,
-            IResturantService restaurantService
+            IResturantService restaurantService,
+            IConfiguration configuration
             )
         {
             _orderService = orderService;
             _stripeSettings = stripeSettings.Value;
             _notificationService = notificationService;
             _restaurantService = restaurantService;
+            _configuration = configuration;
         }
-
-        //[Authorize("Roles = Admin")]
-        //[HttpPost("create-order")]
-        //public async Task<IActionResult> CreateOrder([FromBody] OrderCreateDto dto)
-        //{
-        //    if (!ModelState.IsValid)
-        //        return BadRequest(ModelState);
-
-        //    try
-        //    {
-        //        var order = new Order
-        //        {
-        //            RestaurantId = dto.RestaurantId,
-        //            DistanceKm = dto.DistanceKm,
-        //            CreatedAt = DateTime.UtcNow,
-        //            Status = Order.OrderStatus.Pending
-        //            // CustomerId will be set automatically in the service from claims
-        //        };
-
-        //        // after order validation, redirect to the payment page then add order to chef dashboard.
-        //        //this.CreateCheckoutSession(amount);
-
-        //        await _orderService.AddOrderAsync(order, dto.Items);
-        //        return Ok(new { message = "Order created successfully", orderId = order.Id });
-        //    }
-        //    catch (UnauthorizedAccessException ex)
-        //    {
-        //        return Unauthorized(ex.Message);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return BadRequest(new { message = ex.Message });
-        //    }
-        //}
 
         [HttpGet]
         [Authorize(Roles = "Admin")] // Only admins can see all orders
@@ -127,7 +94,6 @@ namespace Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
-
 
         [HttpGet("customer/{customerId}")]
         [Authorize(Roles = "Admin")] // Only admins can search by customer ID
@@ -214,7 +180,6 @@ namespace Controllers
             {
                 var order = await _orderService.GetOrderByIdAsync(id);
 
-               
                 var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 var userRoles = User.FindAll(ClaimTypes.Role).Select(c => c.Value);
 
@@ -234,13 +199,12 @@ namespace Controllers
             }
         }
 
-
         [HttpPost("create-ckeckout-session")]
         [Authorize(Roles = "Customer")]
-        public async  Task<IActionResult> CreateCheckoutSession([FromBody] OrderCreateDto dto)
+        public async Task<IActionResult> CreateCheckoutSession([FromBody] OrderCreateDto dto)
         {
             int OrderId;
-            int OrderTotal;
+            decimal OrderTotal;
 
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
@@ -255,12 +219,12 @@ namespace Controllers
                     Status = Order.OrderStatus.Pending
                     // CustomerId will be set automatically in the service from claims
                 };
-                
 
                 await _orderService.AddOrderAsync(order, dto.Items);
-                //return Ok(new { message = "Order created successfully", orderId = order.Id });
                 OrderId = order.Id;
-                OrderTotal = (int)order.SubTotal;
+
+                // ✅ Calculate total including add-ons and combos using the service method
+                OrderTotal = await _orderService.CalculateOrderTotalAsync(OrderId);
 
                 // Get the order details and restaurant info
                 var orderDetails = await _orderService.GetOrderByIdAsync(OrderId);
@@ -290,50 +254,8 @@ namespace Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-
-            //int amount = Convert.ToInt32(OrderTotal); 
-
-            ////var domain = "http://localhost:4200";
-            //var domain = "https://localhost:7045";
-            //var currency = "egp";
-            //var successUrl = domain + "/api/Orders/success";
-            //var cancelUrl = domain + "/api/Orders/cancel";
-            ////var successUrl = domain + "/success";
-            ////var cancelUrl = domain + "/cancel";
-            //StripeConfiguration.ApiKey = _stripeSettings.SecretKey;
-
-            //var options = new SessionCreateOptions
-            //{
-            //    PaymentMethodTypes = new List<string> { "card" },
-            //    LineItems = new List<SessionLineItemOptions>
-            //{
-            //    new SessionLineItemOptions
-            //    {
-            //        PriceData = new SessionLineItemPriceDataOptions
-            //        {
-            //            Currency = currency,
-            //            UnitAmount = Convert.ToInt32(amount) * 100,
-            //            ProductData = new SessionLineItemPriceDataProductDataOptions
-            //            {
-            //                Name = "Total Fees",
-            //            }
-            //        },
-            //       Quantity = 1
-            //    },
-            //},
-            //    Metadata = new Dictionary<string, string> {
-            //        { "OrderId",  OrderId.ToString() }
-            //    },
-            //    Mode = "payment",
-            //    SuccessUrl = successUrl + "?session_id={CHECKOUT_SESSION_ID}",
-            //    CancelUrl = cancelUrl,
-            //};
-
-            //var service = new SessionService();
-            //var session = service.Create(options);
-
-            //return Ok(new { url = session.Url, id = session.Id, amount });
         }
+
         // New endpoint for creating Stripe session after chef approval
         [HttpPost("{orderId}/create-payment-session")]
         [Authorize(Roles = "Customer")]
@@ -356,34 +278,24 @@ namespace Controllers
                     return BadRequest("Order must be accepted by chef before payment.");
                 }
 
-                int amount = Convert.ToInt32(order.SubTotal);
+                // ✅ Calculate total including add-ons and combos
+                decimal amount = await _orderService.CalculateOrderTotalAsync(orderId);
 
-                var domain = "https://localhost:7045";
+                // ✅ Get environment-appropriate domain URLs
+                var domain = GetBaseUrl();
                 var currency = "egp";
                 var successUrl = domain + "/api/Orders/success";
                 var cancelUrl = domain + "/api/Orders/cancel";
 
                 StripeConfiguration.ApiKey = _stripeSettings.SecretKey;
 
+                // ✅ Create detailed line items including add-ons and combos
+                var lineItems = await CreateStripeLineItemsAsync(order);
+
                 var options = new SessionCreateOptions
                 {
                     PaymentMethodTypes = new List<string> { "card" },
-                    LineItems = new List<SessionLineItemOptions>
-                    {
-                        new SessionLineItemOptions
-                        {
-                            PriceData = new SessionLineItemPriceDataOptions
-                            {
-                                Currency = currency,
-                                UnitAmount = Convert.ToInt32(amount) * 100,
-                                ProductData = new SessionLineItemPriceDataProductDataOptions
-                                {
-                                    Name = "Total Fees",
-                                }
-                            },
-                           Quantity = 1
-                        },
-                    },
+                    LineItems = lineItems,
                     Metadata = new Dictionary<string, string> {
                         { "OrderId", orderId.ToString() }
                     },
@@ -404,40 +316,15 @@ namespace Controllers
         }
 
         [HttpGet("success")]
-        public Task<IActionResult>  Success([FromQuery] string session_id)
+        public async Task<IActionResult> Success([FromQuery] string session_id)
         {
-            //if (string.IsNullOrEmpty(session_id))
-            //    return BadRequest("No session ID provided");
-
-            //SessionService service = new SessionService();
-            //var session = await service.GetAsync(session_id);
-
-            //int OrderId = int.Parse(session.Metadata["OrderId"]);
-
-            //if(OrderId <= 0)
-            //{
-            //    return BadRequest();
-            //}
-
-            //try
-            //{
-            //    //since a successful payment is placed into stripe dashboard, change the status to paid
-            //    await _orderService.UpdateOrderStatusAsync(OrderId, Order.OrderStatus.Paid);
-            //    return Ok();
-
-            //} catch (Exception e)
-            //{
-            //    return NotFound(new { msg = e.Message });
-            //}
-
-            return CheckoutStatus(session_id, Order.OrderStatus.Paid);
-
+            return await CheckoutStatus(session_id, Order.OrderStatus.Paid);
         }
 
-        [HttpGet, Route("cancel")]
-        public Task<IActionResult> Cancel([FromQuery] string session_id)
+        [HttpGet("cancel")] 
+        public async Task<IActionResult> Cancel([FromQuery] string session_id)
         {
-            return CheckoutStatus(session_id, Order.OrderStatus.Cancelled);
+            return await CheckoutStatus(session_id, Order.OrderStatus.Cancelled);
         }
 
         private async Task<IActionResult> CheckoutStatus(string session_id, Order.OrderStatus status)
@@ -461,11 +348,13 @@ namespace Controllers
 
                 if (status == Order.OrderStatus.Paid)
                 {
-                    // Record payment
+                    // ✅ Record payment with correct total amount including add-ons and combos
+                    var totalAmount = await _orderService.CalculateOrderTotalAsync(orderId);
+
                     await _orderService.CreatePaymentAsync(orderId, new Payment
                     {
                         StripePaymentIntentId = session.PaymentIntentId ?? session.Id,
-                        Amount = order.SubTotal,
+                        Amount = totalAmount,
                         PaidAt = DateTime.UtcNow,
                         OrderId = orderId
                     });
@@ -473,14 +362,18 @@ namespace Controllers
                     // Notify chef
                     await _notificationService.NotifyChefOrderPaid(restaurant.ChefId, orderId);
 
-                    return Redirect("http://localhost:4200/customer/success");
+                    // ✅ Get environment-appropriate frontend URL
+                    var frontendUrl = GetFrontendUrl();
+                    return Redirect($"{frontendUrl}/customer/success");
                 }
                 else
                 {
                     // Notify chef
                     await _notificationService.NotifyChefOrderCancelled(restaurant.ChefId, orderId);
 
-                    return Redirect("http://localhost:4200/customer/error");
+                    // ✅ Get environment-appropriate frontend URL
+                    var frontendUrl = GetFrontendUrl();
+                    return Redirect($"{frontendUrl}/customer/error");
                 }
             }
             catch (Exception e)
@@ -489,5 +382,133 @@ namespace Controllers
             }
         }
 
+        #region Private Helper Methods
+
+        /// <summary>
+        /// ✅ Gets the appropriate base URL based on environment
+        /// </summary>
+        private string GetBaseUrl()
+        {
+            // Check if running in development
+            if (_configuration["ASPNETCORE_ENVIRONMENT"] == "Development")
+            {
+                return "https://localhost:7045";
+            }
+
+            // For production, try to get from configuration or request
+            var apiUrl = _configuration["App:ApiUrl"];
+            if (!string.IsNullOrEmpty(apiUrl))
+            {
+                return apiUrl.TrimEnd('/');
+            }
+
+            // Fallback to request URL
+            var request = HttpContext.Request;
+            return $"{request.Scheme}://{request.Host}";
+        }
+
+        /// <summary>
+        /// ✅ Gets the appropriate frontend URL based on environment
+        /// </summary>
+        private string GetFrontendUrl()
+        {
+            var frontendUrl = _configuration["App:FrontendUrl"];
+            if (!string.IsNullOrEmpty(frontendUrl))
+            {
+                return frontendUrl.TrimEnd('/');
+            }
+
+            // Fallback for development
+            return "http://localhost:4200";
+        }
+
+        /// <summary>
+        /// ✅ Creates detailed Stripe line items including add-ons and combos
+        /// </summary>
+        private async Task<List<SessionLineItemOptions>> CreateStripeLineItemsAsync(Domain.Dtos.OrderDto.OrderResponseDto order)
+        {
+            var lineItems = new List<SessionLineItemOptions>();
+
+            foreach (var item in order.Items)
+            {
+                // Main item
+                var itemTotal = item.ItemPrice * item.Quantity;
+
+                // Add add-ons to item total
+                var addOnTotal = item.AddOns?.Sum(a => a.AddOnPrice * item.Quantity) ?? 0;
+
+                // Add combos to item total
+                var comboTotal = item.Combos?.Sum(c => c.ComboPrice * item.Quantity) ?? 0;
+
+                var finalItemTotal = itemTotal + addOnTotal + comboTotal;
+
+                var itemDescription = item.ItemName;
+                if (item.AddOns?.Any() == true)
+                {
+                    var addOnNames = string.Join(", ", item.AddOns.Select(a => a.AddOnName));
+                    itemDescription += $" with add-ons: {addOnNames}";
+                }
+                if (item.Combos?.Any() == true)
+                {
+                    var comboNames = string.Join(", ", item.Combos.Select(c => c.ComboName));
+                    itemDescription += $" with combos: {comboNames}";
+                }
+
+                lineItems.Add(new SessionLineItemOptions
+                {
+                    PriceData = new SessionLineItemPriceDataOptions
+                    {
+                        Currency = "egp",
+                        UnitAmount = Convert.ToInt64(finalItemTotal * 100), // Convert to cents
+                        ProductData = new SessionLineItemPriceDataProductDataOptions
+                        {
+                            Name = itemDescription,
+                            Description = $"Item: {item.ItemName}"
+                        }
+                    },
+                    Quantity = item.Quantity
+                });
+            }
+
+            // Add delivery fee if any
+            if (order.DeliveryFee > 0)
+            {
+                lineItems.Add(new SessionLineItemOptions
+                {
+                    PriceData = new SessionLineItemPriceDataOptions
+                    {
+                        Currency = "egp",
+                        UnitAmount = Convert.ToInt64(order.DeliveryFee * 100),
+                        ProductData = new SessionLineItemPriceDataProductDataOptions
+                        {
+                            Name = "Delivery Fee"
+                        }
+                    },
+                    Quantity = 1
+                });
+            }
+
+            // Add platform fee if any
+            if (order.PlatformFee > 0)
+            {
+                lineItems.Add(new SessionLineItemOptions
+                {
+                    PriceData = new SessionLineItemPriceDataOptions
+                    {
+                        Currency = "egp",
+                        UnitAmount = Convert.ToInt64(order.PlatformFee * 100),
+                        ProductData = new SessionLineItemPriceDataProductDataOptions
+                        {
+                            Name = "Platform Fee"
+                        }
+                    },
+                    Quantity = 1
+                });
+            }
+
+            return lineItems;
+        }
+
+        #endregion
     }
 }

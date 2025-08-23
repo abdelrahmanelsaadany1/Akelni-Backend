@@ -7,6 +7,7 @@ using Domain.Dtos.OrderDto;
 using Domain.Entities;
 using FoodCourt.Hubs;
 using Microsoft.AspNetCore.SignalR;
+using Persistence.Data;
 using Services.Abstractions.IServices;
 
 namespace Services.Services
@@ -14,23 +15,94 @@ namespace Services.Services
     public class OrderNotificationService : IOrderNotificationService
     {
         private readonly IHubContext<OrderHub> _hubContext;
-        public OrderNotificationService(IHubContext<OrderHub> hubContext)
+        private readonly IdentityContext _dbContext;
+
+        public OrderNotificationService(IHubContext<OrderHub> hubContext, IdentityContext dbContext)
         {
             _hubContext = hubContext;
+            _dbContext = dbContext;
         }
+
         public async Task SendOrderRequestToChef(string chefId, OrderResponseDto order)
         {
-            string customerName = "Customer";
-            await _hubContext.Clients.Group($"Chef_{chefId}").SendAsync("ReceiveOrderRequest", new
+            var totalAmount = CalculateOrderTotalWithAddOnsAndCombos(order);
+            var customerName = order.CustomerName ?? "Customer";
+
+            // Precompute summary in one pass
+            int itemCount = order.Items?.Count ?? 0;
+            int totalQuantity = 0, addOnCount = 0, comboCount = 0;
+            bool hasAddOns = false, hasCombos = false;
+
+            var items = new List<object>();
+
+            if (order.Items != null)
+            {
+                foreach (var item in order.Items)
+                {
+                    totalQuantity += item.Quantity;
+                    if (item.AddOns?.Count > 0)
+                    {
+                        addOnCount += item.AddOns.Count;
+                        hasAddOns = true;
+                    }
+                    if (item.Combos?.Count > 0)
+                    {
+                        comboCount += item.Combos.Count;
+                        hasCombos = true;
+                    }
+
+                    items.Add(new
+                    {
+                        id = item.Id,
+                        itemId = item.ItemId,
+                        itemName = item.ItemName,
+                        itemPrice = item.ItemPrice,
+                        quantity = item.Quantity,
+                        totalPrice = item.TotalPrice,
+                        addOns = item.AddOns?.Select(addOn => new
+                        {
+                            id = addOn.AddOnId,
+                            name = addOn.AddOnName,
+                            price = addOn.AddOnPrice
+                        }).ToList(),
+                        combos = item.Combos?.Select(combo => new
+                        {
+                            id = combo.ComboId,
+                            name = combo.ComboName,
+                            price = combo.ComboPrice
+                        }).ToList(),
+                        itemTotalWithExtras = CalculateItemTotalWithExtras(item)
+                    });
+                }
+            }
+
+            var payload = new
             {
                 orderId = order.Id,
-                customerName = order.CustomerName ?? "Customer",
-                items = order.Items,
-                totalAmount = order.SubTotal,
+                customerName,
+                items,
+                totalAmount,
+                subTotal = order.SubTotal,
+                deliveryFee = order.DeliveryFee,
+                platformFee = order.PlatformFee,
                 createdAt = order.CreatedAt,
-                restaurantName = order.RestaurantName
-            });
+                restaurantName = order.RestaurantName,
+                status = order.Status.ToString().ToLowerInvariant(),
+                orderSummary = new
+                {
+                    itemCount,
+                    totalQuantity,
+                    hasAddOns,
+                    hasCombos,
+                    addOnCount,
+                    comboCount
+                }
+            };
+
+            await _hubContext.Clients.Group($"Chef_{chefId}")
+                .SendCoreAsync("ReceiveOrderRequest", new object[] { payload });
         }
+
 
         public async Task NotifyCustomerOrderAccepted(string customerId, int orderId)
         {
@@ -83,13 +155,11 @@ namespace Services.Services
             });
         }
 
-
         public async Task NotifyChefNewOrder(string chefId, int orderId, object payload)
         {
             await _hubContext.Clients.Group($"Chef_{chefId}")
                 .SendAsync("ReceiveOrderRequest", payload);
         }
-
 
         public async Task NotifyOrderStatusToChef(string chefId, int orderId, string status)
         {
@@ -145,6 +215,65 @@ namespace Services.Services
             );
         }
 
+        #region Private Helper Methods
+
+        /// <summary>
+        /// ✅ Calculates the total order amount including all add-ons and combos
+        /// </summary>
+        private decimal CalculateOrderTotalWithAddOnsAndCombos(OrderResponseDto order)
+        {
+            decimal total = 0;
+
+            if (order.Items != null)
+            {
+                foreach (var item in order.Items)
+                {
+                    // Base item total
+                    total += item.ItemPrice * item.Quantity;
+
+                    // Add-ons total
+                    if (item.AddOns != null)
+                    {
+                        total += item.AddOns.Sum(addOn => addOn.AddOnPrice * item.Quantity);
+                    }
+
+                    // Combos total
+                    if (item.Combos != null)
+                    {
+                        total += item.Combos.Sum(combo => combo.ComboPrice * item.Quantity);
+                    }
+                }
+            }
+
+            // Add fees
+            total += order.DeliveryFee + order.PlatformFee;
+
+            return total;
+        }
+
+        /// <summary>
+        /// ✅ Calculates individual item total including its add-ons and combos
+        /// </summary>
+        private decimal CalculateItemTotalWithExtras(OrderItemResponseDto item)
+        {
+            decimal itemTotal = item.ItemPrice * item.Quantity;
+
+            // Add add-ons
+            if (item.AddOns != null)
+            {
+                itemTotal += item.AddOns.Sum(addOn => addOn.AddOnPrice * item.Quantity);
+            }
+
+            // Add combos
+            if (item.Combos != null)
+            {
+                itemTotal += item.Combos.Sum(combo => combo.ComboPrice * item.Quantity);
+            }
+
+            return itemTotal;
+        }
+
+        #endregion
 
         private string GetStatusMessage(Order.OrderStatus status)
         {
@@ -174,7 +303,6 @@ namespace Services.Services
                 _ => Order.OrderStatus.Pending
             };
         }
-
 
         public Task NotifyCustomerOrderDelivered(string customerId, int orderId)
         {

@@ -967,8 +967,11 @@ namespace Services.CategoryService // Adjust namespace as needed
             if (order == null)
                 throw new KeyNotFoundException($"Order with ID {orderId} not found");
 
-            // Set the OrderId (though it should already be set)
+            // ✅ Ensure OrderId is set correctly
             payment.OrderId = orderId;
+
+            // ✅ Don't set payment.Id manually - let EF handle it
+            // payment.Id should be auto-generated
 
             // Add payment to context
             await _context.Payments.AddAsync(payment);
