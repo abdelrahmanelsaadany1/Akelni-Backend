@@ -14,7 +14,7 @@
 		<PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.0.0" />
 		<PackageReference Include="Google.Apis.Auth" Version="1.70.0" />
 
-		<!-- ❌ Removed Microsoft.AspNet.WebApi.Core (incompatible with .NET 8) -->
+		<!-- ❌ Removed Microsoft.AspNet.WebApi.Core (not compatible with net8.0) -->
 
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.Facebook" Version="8.0.18" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.18" />
@@ -30,9 +30,9 @@
 		<PackageReference Include="Stripe.net" Version="48.4.0" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
 
-		<!-- ✅ Updated to avoid downgrade -->
-		<PackageReference Include="Microsoft.IdentityModel.Protocols" Version="8.0.1" />
-		<PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.0.1" />
+		<!-- ✅ Fixed package downgrade: match Services project (>= 8.12.1) -->
+		<PackageReference Include="Microsoft.IdentityModel.Protocols" Version="8.12.1" />
+		<PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.12.1" />
 	</ItemGroup>
 
 	<ItemGroup>
