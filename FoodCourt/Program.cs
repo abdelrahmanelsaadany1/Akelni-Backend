@@ -186,7 +186,7 @@ namespace FoodCourt
                 opt.AddPolicy(corsPolicyName,
                     policy =>
                     {
-                        policy.WithOrigins("http://localhost:4200", "https://akelny-front.vercel.app")
+                        policy.WithOrigins("http://localhost:4200", "https://akelny-front.vercel.app", "https://akelni-backend-4.onrender.com")
                         .AllowAnyHeader()
                         .AllowAnyMethod()
                         .AllowCredentials()
@@ -242,7 +242,7 @@ namespace FoodCourt
             app.UseStaticFiles();
 
 
-            app.MapGet("/", () => " FoodCourt API — VERSION 2.1");
+            app.MapGet("/", () => " FoodCourt API — VERSION 2.2");
             app.MapControllers();
 
             // Map SignalR hubs
