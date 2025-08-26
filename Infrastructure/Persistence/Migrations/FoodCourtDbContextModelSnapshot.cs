@@ -408,6 +408,14 @@ namespace Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("IsOpen");
+
+                    b.HasIndex("Name");
+
+                    b.HasIndex("Rating");
+
+                    b.HasIndex("IsOpen", "Rating");
+
                     b.ToTable("Restaurants");
                 });
 

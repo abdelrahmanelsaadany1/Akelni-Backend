@@ -1,4 +1,7 @@
-﻿using Domain.Contracts;
+﻿using System.Linq;
+using System.Net.NetworkInformation;
+using System.Security.Claims;
+using Domain.Contracts;
 using Domain.Contracts.SieveProcessor;
 using Domain.Dtos.ResturantDto;
 using Domain.Entities;
@@ -8,9 +11,10 @@ using Microsoft.EntityFrameworkCore;
 using Persistence.Data;
 using Services.Abstractions.ICategoryService;
 using Services.Abstractions.IServices;
-using System.Linq;
-using System.Security.Claims;
+using Sieve.Services;
 using static System.Net.Mime.MediaTypeNames;
+using Domain.Dtos;
+
 
 [ApiController]
 [Route("api/[controller]")]
@@ -18,47 +22,44 @@ public class RestaurantsController : ControllerBase
 {
     private readonly IResturantService _restaurantService;
     private readonly IGenericService<Restaurant> _genericService;
-
-    readonly FoodCourtDbContext _dbContext;
     public RestaurantsController(
         IResturantService restaurantService,
-        IGenericService<Restaurant> genericService,
-
-        FoodCourtDbContext dbContext
+        IGenericService<Restaurant> genericService
         )
     {
         _restaurantService = restaurantService;
         _genericService = genericService;
-
-        _dbContext = dbContext;
-
-
     }
 
-    // Authorized Admin and Customer can view all restaurants
     [HttpGet]
     [Authorize(Roles = "Admin,Customer")]
     public async Task<IActionResult> GetAllRestaurants([FromQuery] CustomSieveModel sieveModel)
     {
-        //var restaurants = await _restaurantService.GetAllRestaurantsAsync();
-        var result = _genericService.GetAllSieveAsync(sieveModel);
-        return Ok(new
+        try
         {
-            categories = await result.ToListAsync(),
-            totalCount = await result.CountAsync()
-        });
+            // ✅ Use the generic service instead of direct DbContext access
+            var result = _genericService.GetAllSieveAsync(sieveModel);
+
+            var totalCount = await result.CountAsync();
+            var restaurants = await result.ToListAsync();
+
+            var page = sieveModel.Page ?? 1;
+            var pageSize = sieveModel.PageSize ?? 20;
+
+            return Ok(new
+            {
+                restaurants,
+                totalCount,
+                page,
+                pageSize
+            });
+        }
+        catch (Exception ex)
+        {
+            // Consider logging ex to help diagnose issues
+            return StatusCode(500, new { error = "An error occurred while fetching restaurants." });
+        }
     }
-    //[Authorize (Roles = "Admin,Chef")]
-    //public async Task<IActionResult> GetAllRestaurants()
-    //{
-    //    //var restaurants = await _restaurantService.GetAllRestaurantsAsync();
-    //    var result = _genericService.GetAllSieveAsync(sieveModel);
-    //    return Ok(new
-    //    {
-    //        categories = await result.ToListAsync(),
-    //        totalCount = await result.CountAsync()
-    //    });
-    //}
 
     // Authorized Chef can create a restaurant
     [HttpPost]
@@ -236,130 +237,34 @@ public class RestaurantsController : ControllerBase
     {
         try
         {
-            var restaurant = await _dbContext.Restaurants
-                .Where(r => r.Id == id)
-                .Select(r => new
-                {
-                    resName = r.Name,
-                    rating = r.Rating,
-                    resImage = r.ImageUrl,
-                    location = r.Location
-                })
-                .FirstOrDefaultAsync();
-
-            if (restaurant == null)
-                return NotFound("Restaurant not found");
-
-            //// Get categories separately (lighter query)
-            //var categories = await _dbContext.Items
-            //    .Where(i => i.RestaurantId == id)
-            //    .Select(i => new { i.Category.Id, i.Category.Name })
-            //    .Distinct()
-            //    .ToListAsync();
-            var categories = await _dbContext.Categories
-                .Where(c => c.Items.Any(i => i.RestaurantId == id))
-                .Select(c => new { c.Id, c.Name })
-                .ToListAsync();
-
-
-            // Count items separately (fast aggregate query)
-            var totalItems = await _dbContext.Items
-                .Where(i => i.RestaurantId == id)
-                .CountAsync();
-
-            var items = await _dbContext.Items
-                .Where(i => i.RestaurantId == id)
-                .OrderBy(i => i.Id)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(i => new
-                {
-                    i.Id,
-                    i.Name,
-                    i.Price,
-                    image = i.ImageUrl,
-                    categoryName = i.Category.Name,
-                    categoryId = i.Category.Id
-                })
-                .ToListAsync();
-
-            int totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
-
-            return Ok(new
-            {
-                restaurant.resName,
-                restaurant.rating,
-                restaurant.resImage,
-                restaurant.location,
-                categories,
-                items,
-                totalPages
-            });
+            var result = await _restaurantService.GetCustomerRestaurantDetailsAsync(id, page, pageSize);
+            return Ok(result);
         }
-        catch (Exception)
+        catch (ArgumentException ex)
         {
-            return StatusCode(500, "An unexpected error occurred.");
-        }
-    }
-
-
-    [HttpGet("restCatItems/{id}")]
-    public async Task<IActionResult> GetRestCatItems(
-    int id,
-    [FromQuery] int catId,
-    [FromQuery] int page = 1,
-    [FromQuery] int pageSize = 4)
-    {
-        try
-        {
-            if (page <= 0) page = 1;
-            if (pageSize <= 0) pageSize = 4;
-
-            // 1) Get total count (fast aggregate query)
-            var totalCount = await _dbContext.Items
-                .Where(i => i.RestaurantId == id && i.CategoryId == catId)
-                .CountAsync();
-
-            if (totalCount == 0)
-            {
-                return Ok(new
-                {
-                    items = new List<object>(),
-                    page,
-                    pageSize,
-                    totalPages = 0
-                });
-            }
-
-            // 2) Get only the requested page of items
-            var items = await _dbContext.Items
-                .Where(i => i.RestaurantId == id && i.CategoryId == catId)
-                .OrderBy(i => i.Id) // ensure stable ordering for paging
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .Select(i => new
-                {
-                    Id = i.Id,
-                    Name = i.Name,
-                    Price = i.Price,
-                    Image = i.ImageUrl
-                })
-                .ToListAsync();
-
-            // 3) Calculate total pages
-            int totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
-
-            return Ok(new
-            {
-                items,
-                page,
-                pageSize,
-                totalPages
-            });
+            return NotFound(ex.Message);
         }
         catch (Exception ex)
         {
-            return BadRequest(new { message = ex.Message });
+            return StatusCode(500, new { error = "An unexpected error occurred." });
+        }
+    }
+
+    [HttpGet("restCatItems/{id}")]
+    public async Task<IActionResult> GetRestCatItems(int id, [FromQuery] int catId, [FromQuery] int page = 1, [FromQuery] int pageSize = 4)
+    {
+        try
+        {
+            var result = await _restaurantService.GetRestaurantCategoryItemsAsync(id, catId, page, pageSize);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return NotFound(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = "An unexpected error occurred." });
         }
     }
 

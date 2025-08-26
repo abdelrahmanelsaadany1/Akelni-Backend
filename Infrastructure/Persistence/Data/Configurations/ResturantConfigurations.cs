@@ -12,6 +12,9 @@ public class RestaurantConfigurations : IEntityTypeConfiguration<Restaurant>
                .HasMaxLength(100)
                .IsRequired();
 
-        // Optional: you can configure indexes or other fields if needed
+        builder.HasIndex(r => r.Name);
+        builder.HasIndex(r => r.Rating);
+        builder.HasIndex(r => r.IsOpen);
+        builder.HasIndex(r => new { r.IsOpen, r.Rating });
     }
 }

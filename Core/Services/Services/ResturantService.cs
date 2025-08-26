@@ -1,16 +1,18 @@
-﻿using Domain.Contracts;
-using Domain.Entities;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
-using Persistence.Data;
-using Services.Abstractions.ICategoryService;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
+using Domain.Contracts;
+using Domain.Dtos;
+using Domain.Dtos.ResturantDto;
+using Domain.Entities;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using Persistence.Data;
+using Services.Abstractions.ICategoryService;
 
 namespace Services.CategoryService
 {
@@ -18,17 +20,23 @@ namespace Services.CategoryService
     {
         private readonly IGenericRepository<Restaurant> _RestaurantRepository;
         private readonly IGenericRepository<Review> _ReviewRepository;
+        private readonly IGenericRepository<Item> _ItemRepository;
+        private readonly IGenericRepository<Category> _CategoryRepository;
         private readonly IdentityContext identityContext;
         private readonly IHttpContextAccessor _httpContextAccessor;
 
         public ResturantService(
             IGenericRepository<Restaurant> RestaurantRepository,
             IGenericRepository<Review> ReviewRepository,
+            IGenericRepository<Item> ItemRepository,
+            IGenericRepository<Category> CategoryRepository,
             IdentityContext identityContext,
             IHttpContextAccessor httpContextAccessor)
         {
             _RestaurantRepository = RestaurantRepository;
             _ReviewRepository = ReviewRepository;
+            _ItemRepository = ItemRepository;
+            _CategoryRepository = CategoryRepository;
             this.identityContext = identityContext;
             _httpContextAccessor = httpContextAccessor;
         }
@@ -197,6 +205,134 @@ namespace Services.CategoryService
 
             _RestaurantRepository.Update(restaurant);
             await _RestaurantRepository.SaveChangesAsync();
+        }
+
+        public async Task<CustomerRestaurantDto> GetCustomerRestaurantDetailsAsync(int restaurantId, int page = 1, int pageSize = 4)
+        {
+            // Validate parameters
+            if (page <= 0) page = 1;
+            if (pageSize <= 0) pageSize = 4;
+            if (pageSize > 50) pageSize = 50;
+
+            // Get restaurant basic info
+            var restaurant = await _RestaurantRepository.GetByIdAsync(restaurantId);
+            if (restaurant == null)
+                throw new ArgumentException("Restaurant not found");
+
+            // Get all items for this restaurant to extract categories
+            var allItems = await _ItemRepository.GetAllQuerable()
+                .Where(i => i.RestaurantId == restaurantId)
+                .Include(i => i.Category)
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Get distinct categories
+            var categories = allItems
+                .Where(i => i.Category != null)
+                .Select(i => i.Category)
+                .DistinctBy(c => c.Id)
+                .Select(c => new CategorySummaryDto
+                {
+                    Id = c.Id,
+                    Name = c.Name
+                })
+                .OrderBy(c => c.Name)
+                .ToList();
+
+            // Get total items count
+            var totalItems = allItems.Count;
+
+            // Get paginated items
+            var paginatedItems = allItems
+                .OrderBy(i => i.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(i => new ItemSummaryDto
+                {
+                    Id = i.Id,
+                    Name = i.Name,
+                    Price = i.Price,
+                    Image = i.ImageUrl,
+                    CategoryName = i.Category?.Name ?? "Unknown",
+                    CategoryId = i.Category?.Id ?? 0
+                })
+                .ToList();
+
+            int totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
+
+            return new CustomerRestaurantDto
+            {
+                ResName = restaurant.Name,
+                Rating = restaurant.Rating,
+                ResImage = restaurant.ImageUrl,
+                Location = restaurant.Location,
+                Categories = categories,
+                Items = paginatedItems,
+                TotalPages = totalPages,
+                CurrentPage = page,
+                PageSize = pageSize,
+                TotalItems = totalItems
+            };
+        }
+
+        // Add this method to your existing ResturantService class
+        public async Task<RestaurantCategoryItemsDto> GetRestaurantCategoryItemsAsync(int restaurantId, int categoryId, int page = 1, int pageSize = 4)
+        {
+            // Validate parameters
+            if (page <= 0) page = 1;
+            if (pageSize <= 0) pageSize = 4;
+            if (pageSize > 50) pageSize = 50;
+
+            // Verify restaurant exists
+            var restaurant = await _RestaurantRepository.GetByIdAsync(restaurantId);
+            if (restaurant == null)
+                throw new ArgumentException("Restaurant not found");
+
+            // Get all items for this restaurant and category
+            var allItems = await _ItemRepository.GetAllQuerable()
+                .Where(i => i.RestaurantId == restaurantId && i.CategoryId == categoryId)
+                .AsNoTracking()
+                .ToListAsync();
+
+            // Get total items count
+            var totalItems = allItems.Count;
+
+            if (totalItems == 0)
+            {
+                return new RestaurantCategoryItemsDto
+                {
+                    Items = new List<CategoryItemSummaryDto>(),
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = 0,
+                    TotalItems = 0
+                };
+            }
+
+            // Get paginated items
+            var paginatedItems = allItems
+                .OrderBy(i => i.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(i => new CategoryItemSummaryDto
+                {
+                    Id = i.Id,
+                    Name = i.Name,
+                    Price = i.Price,
+                    Image = i.ImageUrl
+                })
+                .ToList();
+
+            int totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
+
+            return new RestaurantCategoryItemsDto
+            {
+                Items = paginatedItems,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = totalPages,
+                TotalItems = totalItems
+            };
         }
     }
 }

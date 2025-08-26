@@ -78,6 +78,9 @@ namespace FoodCourt
             builder.Services.AddScoped(typeof(IGenericService<>), typeof(GenericService<>));
             builder.Services.AddScoped<ICategoryService, CategoryService>();
             builder.Services.AddScoped<IDbInitializer, DbInitializer>();
+            // Add these if not already registered
+            builder.Services.AddScoped<IGenericRepository<Item>, GenericRepository<Item>>();
+            builder.Services.AddScoped<IGenericRepository<Category>, GenericRepository<Category>>();
             // JWT
             builder.Services.AddScoped<JwtService>();
             // Email Service 
