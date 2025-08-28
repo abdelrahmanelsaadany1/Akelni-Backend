@@ -37,11 +37,13 @@ public class RestaurantsController : ControllerBase
     {
         try
         {
-            // ✅ Use the generic service instead of direct DbContext access
-            var result = _genericService.GetAllSieveAsync(sieveModel);
+            // 1) filtered+sorted, NO pagination -> correct totalCount
+            var filtered = _genericService.GetAllSieveAsync(sieveModel, applyPagination: false);
+            var totalCount = await filtered.CountAsync();
 
-            var totalCount = await result.CountAsync();
-            var restaurants = await result.ToListAsync();
+            // 2) filtered+sorted, WITH pagination -> page items
+            var paged = _genericService.GetAllSieveAsync(sieveModel, applyPagination: true);
+            var restaurants = await paged.ToListAsync();
 
             var page = sieveModel.Page ?? 1;
             var pageSize = sieveModel.PageSize ?? 20;
@@ -54,9 +56,8 @@ public class RestaurantsController : ControllerBase
                 pageSize
             });
         }
-        catch (Exception ex)
+        catch
         {
-            // Consider logging ex to help diagnose issues
             return StatusCode(500, new { error = "An error occurred while fetching restaurants." });
         }
     }
